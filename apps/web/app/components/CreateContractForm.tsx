@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { api } from "../../lib/api";
+import { api } from "@/lib/api";
 
 export default function CreateContractForm({ orderId }: { orderId: string }) {
   const router = useRouter();

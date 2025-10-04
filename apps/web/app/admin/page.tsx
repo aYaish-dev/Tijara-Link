@@ -1,13 +1,13 @@
 import Link from "next/link";
 
-import { api } from "../../lib/api";
-import type {
+import {
+  api,
   ApiOrder,
   ApiQuote,
   ApiRfq,
   ApiShipment,
   SupplierReviewsPayload,
-} from "../../lib/api";
+} from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 

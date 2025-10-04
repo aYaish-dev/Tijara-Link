@@ -1,10 +1,9 @@
 import Link from "next/link";
 
-import { api } from "../../../lib/api";
-import type { ApiCustoms, ApiOrder, ApiShipment } from "../../../lib/api";
-import SetShipmentStatusButton from "../../components/SetShipmentStatusButton";
-import AttachCustomsForm from "../../components/AttachCustomsForm";
-import SetCustomsStatusButton from "../../components/SetCustomsStatusButton";
+import { api, ApiCustoms, ApiOrder, ApiShipment } from "@/lib/api";
+import SetShipmentStatusButton from "@/app/components/SetShipmentStatusButton";
+import AttachCustomsForm from "@/app/components/AttachCustomsForm";
+import SetCustomsStatusButton from "@/app/components/SetCustomsStatusButton";
 
 export const dynamic = "force-dynamic";
 

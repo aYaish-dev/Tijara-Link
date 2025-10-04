@@ -1,7 +1,6 @@
 import Link from "next/link";
 
-import { api } from "../../../lib/api";
-import type { ApiQuote, ApiRfq } from "../../../lib/api";
+import { api, ApiQuote, ApiRfq } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 

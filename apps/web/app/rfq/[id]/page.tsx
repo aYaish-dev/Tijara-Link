@@ -1,9 +1,8 @@
 import Link from "next/link";
 
-import { api } from "../../../lib/api";
-import type { ApiQuote, ApiRfq } from "../../../lib/api";
-import AcceptQuoteButton from "../../components/AcceptQuoteButton";
-import CreateOrderButton from "../../components/CreateOrderButton";
+import { api, ApiQuote, ApiRfq } from "@/lib/api";
+import AcceptQuoteButton from "@/app/components/AcceptQuoteButton";
+import CreateOrderButton from "@/app/components/CreateOrderButton";
 
 export const dynamic = "force-dynamic";
 
@@ -105,7 +104,7 @@ export default async function RfqDetails({ params }: { params: { id: string } })
                 <dl className="quote-meta">
                   <div>
                     <dt>Supplier</dt>
-                    <dd>{quote.supplierCompanyId || quote.supplierId || "—"}</dd>
+                    <dd>{quote.supplierId || "—"}</dd>
                   </div>
                   <div>
                     <dt>MOQ</dt>

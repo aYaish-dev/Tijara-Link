@@ -1,8 +1,7 @@
 import Link from "next/link";
 
-import { api } from "../../../lib/api";
-import type { ApiOrder } from "../../../lib/api";
-import ReleaseEscrowButton from "../../components/ReleaseEscrowButton";
+import { api, ApiOrder } from "@/lib/api";
+import ReleaseEscrowButton from "@/app/components/ReleaseEscrowButton";
 
 export const dynamic = "force-dynamic";
 

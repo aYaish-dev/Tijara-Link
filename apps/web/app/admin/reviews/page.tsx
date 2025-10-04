@@ -1,7 +1,6 @@
 import Link from "next/link";
 
-import { api } from "../../../lib/api";
-import type { ApiOrder, ApiReview, SupplierReviewsPayload } from "../../../lib/api";
+import { api, ApiOrder, ApiReview, SupplierReviewsPayload } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
