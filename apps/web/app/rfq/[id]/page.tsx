@@ -1,3 +1,4 @@
+import { API_BASE } from "@/lib/api";
 import RfqPageClient from "./RfqPageClient";
 
 async function fetchJSON(url: string, init?: RequestInit) {
@@ -8,7 +9,7 @@ async function fetchJSON(url: string, init?: RequestInit) {
 
 export default async function RfqPage({ params }: { params: { id: string } }) {
   const id = params.id;
-  const rfq = await fetchJSON(`http://localhost:3001/rfq`).then((arr) =>
+  const rfq = await fetchJSON(`${API_BASE}/rfq`).then((arr) =>
     (arr as any[]).find((r) => r.id === id)
   );
   if (!rfq) {
@@ -19,7 +20,7 @@ export default async function RfqPage({ params }: { params: { id: string } }) {
     );
   }
 
-  const quotes = await fetchJSON(`http://localhost:3001/quotes/rfq/${id}`).catch(() => []);
+  const quotes = await fetchJSON(`${API_BASE}/quotes/rfq/${id}`).catch(() => []);
 
   return <RfqPageClient rfq={rfq} quotes={quotes} />;
 }

@@ -1,6 +1,7 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+export const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
 
-async function json<T>(res: Response): Promise<T> {
+async function json<T = any>(res: Response): Promise<T> {
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`API ${res.status}: ${text || res.statusText}`);
@@ -18,22 +19,22 @@ function ensureNoError<T extends Record<string, any>>(data: T): T {
 export const api = {
   // المستخدمة في app/page.tsx
   async listRfq(): Promise<Array<{ id: string; title: string; status: string; destinationCountry: string; createdAt: string }>> {
-    const res = await fetch(`${BASE}/rfq`, { cache: "no-store" });
+    const res = await fetch(`${API_BASE}/rfq`, { cache: "no-store" });
     return json(res);
   },
 
   // أمثلة إضافية إن حبيت تستعملها لاحقًا:
   async listQuotes(rfqId: string) {
-    const res = await fetch(`${BASE}/quotes/rfq/${rfqId}`, { cache: "no-store" });
+    const res = await fetch(`${API_BASE}/quotes/rfq/${rfqId}`, { cache: "no-store" });
     return json(res);
   },
   async acceptQuote(id: string) {
-    const res = await fetch(`${BASE}/quotes/${id}/accept`, { method: "POST" });
+    const res = await fetch(`${API_BASE}/quotes/${id}/accept`, { method: "POST" });
     return json(res);
   },
 
   async createOrder(payload: { quoteId: string; totalMinor?: number; totalCurrency?: string }) {
-    const res = await fetch(`${BASE}/orders`, {
+    const res = await fetch(`${API_BASE}/orders`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -42,17 +43,17 @@ export const api = {
   },
 
   async getOrder(id: string) {
-    const res = await fetch(`${BASE}/orders/${id}`, { cache: "no-store" });
+    const res = await fetch(`${API_BASE}/orders/${id}`, { cache: "no-store" });
     return ensureNoError(await json(res));
   },
 
   async releaseEscrow(orderId: string) {
-    const res = await fetch(`${BASE}/orders/${orderId}/escrow/release`, { method: "POST" });
+    const res = await fetch(`${API_BASE}/orders/${orderId}/escrow/release`, { method: "POST" });
     return ensureNoError(await json(res));
   },
 
   async createShipment(orderId: string, payload: { mode?: string; trackingNumber?: string; tracking?: string }) {
-    const res = await fetch(`${BASE}/orders/${orderId}/shipments`, {
+    const res = await fetch(`${API_BASE}/orders/${orderId}/shipments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -61,7 +62,7 @@ export const api = {
   },
 
   async setShipmentStatus(shipmentId: string, status: string) {
-    const res = await fetch(`${BASE}/shipments/${shipmentId}/status`, {
+    const res = await fetch(`${API_BASE}/shipments/${shipmentId}/status`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
@@ -70,7 +71,7 @@ export const api = {
   },
 
   async createCustoms(shipmentId: string, payload: { data?: Record<string, any>; status?: string | null }) {
-    const res = await fetch(`${BASE}/shipments/${shipmentId}/customs`, {
+    const res = await fetch(`${API_BASE}/shipments/${shipmentId}/customs`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -79,7 +80,7 @@ export const api = {
   },
 
   async updateCustomsStatus(customsId: string, status: string) {
-    const res = await fetch(`${BASE}/customs/${customsId}/status`, {
+    const res = await fetch(`${API_BASE}/customs/${customsId}/status`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
@@ -88,7 +89,7 @@ export const api = {
   },
 
   async createContract(orderId: string, terms: string) {
-    const res = await fetch(`${BASE}/contracts/order/${orderId}`, {
+    const res = await fetch(`${API_BASE}/contracts/order/${orderId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ terms }),
@@ -97,7 +98,7 @@ export const api = {
   },
 
   async signContract(contractId: string, role: "buyer" | "supplier") {
-    const res = await fetch(`${BASE}/contracts/${contractId}/sign`, {
+    const res = await fetch(`${API_BASE}/contracts/${contractId}/sign`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role }),
@@ -106,7 +107,7 @@ export const api = {
   },
 
   async upsertReview(orderId: string, rating: number, comment: string) {
-    const res = await fetch(`${BASE}/orders/${orderId}/review`, {
+    const res = await fetch(`${API_BASE}/orders/${orderId}/review`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rating, comment }),

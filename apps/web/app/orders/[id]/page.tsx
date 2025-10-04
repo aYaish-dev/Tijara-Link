@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { API_BASE } from "@/lib/api";
 import OrderPageClient from "./OrderPageClient";
 
 async function fetchJSON(url: string, init?: RequestInit) {
@@ -10,7 +11,7 @@ async function fetchJSON(url: string, init?: RequestInit) {
 
 export default async function OrderPage({ params }: { params: { id: string } }) {
   const id = params.id;
-  const order = await fetchJSON(`http://localhost:3001/orders/${id}`).catch(() => null);
+  const order = await fetchJSON(`${API_BASE}/orders/${id}`).catch(() => null);
 
   if (!order) {
     return (

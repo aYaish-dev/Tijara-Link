@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { API_BASE } from "@/lib/api";
+
 type Shipment = {
   id: string;
   mode: string;
@@ -66,7 +68,7 @@ export default function OrderPageClient({ order }: { order: Order }) {
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
-                  await fetch(`http://localhost:3001/orders/${order.id}/escrow/release`, {
+                  await fetch(`${API_BASE}/orders/${order.id}/escrow/release`, {
                     method: "POST",
                   });
                   router.refresh();
@@ -94,7 +96,7 @@ export default function OrderPageClient({ order }: { order: Order }) {
               const tracking = (form.elements.namedItem("tracking") as HTMLInputElement).value ||
                 "TRK-CLIENT";
               const mode = (form.elements.namedItem("mode") as HTMLSelectElement).value || "SEA";
-              await fetch(`http://localhost:3001/orders/${order.id}/shipments`, {
+              await fetch(`${API_BASE}/orders/${order.id}/shipments`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ mode, trackingNumber: tracking }),
@@ -128,7 +130,7 @@ export default function OrderPageClient({ order }: { order: Order }) {
                 <button
                   className="px-2 py-1 rounded border"
                   onClick={async () => {
-                    await fetch(`http://localhost:3001/shipments/${s.id}/status`, {
+                    await fetch(`${API_BASE}/shipments/${s.id}/status`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ status: "AT_CUSTOMS" }),
@@ -146,7 +148,7 @@ export default function OrderPageClient({ order }: { order: Order }) {
                       data: { hsCode: "7208.38", docs: ["invoice.pdf"] },
                       status: "SUBMITTED",
                     };
-                    await fetch(`http://localhost:3001/shipments/${s.id}/customs`, {
+                    await fetch(`${API_BASE}/shipments/${s.id}/customs`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify(payload),
@@ -160,7 +162,7 @@ export default function OrderPageClient({ order }: { order: Order }) {
                 <button
                   className="px-2 py-1 rounded border"
                   onClick={async () => {
-                    await fetch(`http://localhost:3001/shipments/${s.id}/status`, {
+                    await fetch(`${API_BASE}/shipments/${s.id}/status`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ status: "DELIVERED" }),
@@ -182,7 +184,7 @@ export default function OrderPageClient({ order }: { order: Order }) {
           <button
             className="px-3 py-1.5 rounded border"
             onClick={async () => {
-              const r = await fetch(`http://localhost:3001/contracts/order/${order.id}`, {
+              const r = await fetch(`${API_BASE}/contracts/order/${order.id}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ terms: "Basic TijaraLink contract terms v1" }),
@@ -205,7 +207,7 @@ export default function OrderPageClient({ order }: { order: Order }) {
               <button
                 className="px-2 py-1 rounded border"
                 onClick={async () => {
-                  await fetch(`http://localhost:3001/contracts/${order.contract?.id}/sign`, {
+                  await fetch(`${API_BASE}/contracts/${order.contract?.id}/sign`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ role: "buyer" }),
@@ -218,7 +220,7 @@ export default function OrderPageClient({ order }: { order: Order }) {
               <button
                 className="px-2 py-1 rounded border"
                 onClick={async () => {
-                  await fetch(`http://localhost:3001/contracts/${order.contract?.id}/sign`, {
+                  await fetch(`${API_BASE}/contracts/${order.contract?.id}/sign`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ role: "supplier" }),
@@ -242,7 +244,7 @@ export default function OrderPageClient({ order }: { order: Order }) {
             const form = e.currentTarget;
             const rating = Number((form.elements.namedItem("rating") as HTMLInputElement).value || 5);
             const comment = (form.elements.namedItem("comment") as HTMLInputElement).value || "";
-            await fetch(`http://localhost:3001/orders/${order.id}/review`, {
+            await fetch(`${API_BASE}/orders/${order.id}/review`, {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ rating, comment }),

@@ -1,8 +1,6 @@
 import Link from "next/link";
+import { API_BASE } from "@/lib/api";
 import NewRfqForm from "./components/NewRfqForm";
-
-const API_BASE =
-  process.env.API_BASE || process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
 
 async function listRfq() {
   const res = await fetch(`${API_BASE}/rfq`, { cache: "no-store" });
@@ -35,7 +33,7 @@ export default async function Home() {
       <NewRfqForm />
 
       <div className="text-sm text-gray-500">
-        API: <Link href="http://localhost:3001/health">/health</Link>
+        API: <Link href={`${API_BASE}/health`}>/health</Link>
       </div>
     </main>
   );

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { API_BASE } from "@/lib/api";
+
 type Quote = {
   id: string;
   currency?: string;
@@ -62,7 +64,7 @@ export default function RfqPageClient({ rfq, quotes }: { rfq: Rfq; quotes: Quote
                   method="post"
                   onSubmit={async (e) => {
                     e.preventDefault();
-                    await fetch(`http://localhost:3001/quotes/${q.id}/accept`, { method: "POST" });
+                    await fetch(`${API_BASE}/quotes/${q.id}/accept`, { method: "POST" });
                     router.refresh();
                   }}
                 >
@@ -76,7 +78,7 @@ export default function RfqPageClient({ rfq, quotes }: { rfq: Rfq; quotes: Quote
                   method="post"
                   onSubmit={async (e) => {
                     e.preventDefault();
-                    await fetch(`http://localhost:3001/orders`, {
+                    await fetch(`${API_BASE}/orders`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
