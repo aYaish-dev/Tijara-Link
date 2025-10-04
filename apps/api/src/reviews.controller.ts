@@ -18,7 +18,7 @@ export class ReviewsController {
       if (!order) throw new Error('Order not found');
 
       const rating = Number(dto.rating);
-      const text = dto.comment?.toString() ?? dto.text?.toString() ?? null;
+      const text = dto.comment?.toString() ?? null;
 
       const created = await this.prisma.review.create({
         data: {
@@ -46,7 +46,7 @@ export class ReviewsController {
       if (!order) throw new Error('Order not found');
 
       const rating = Number(dto.rating);
-      const text = dto.comment?.toString() ?? dto.text?.toString() ?? null;
+      const text = dto.comment?.toString() ?? null;
 
       const upserted = await this.prisma.review.upsert({
         where: { orderId }, // يعتمد على unique(orderId)
@@ -75,10 +75,14 @@ export class ReviewsController {
       select: { id: true, companyId: true, orderId: true, rating: true, text: true, createdAt: true },
     });
 
-    const avg =
-      reviews.length > 0
-        ? Math.round((reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length) * 10) / 10
-        : 0;
+    let avg = 0;
+    if (reviews.length > 0) {
+      const totalRating = reviews.reduce(
+        (sum: number, review: (typeof reviews)[number]) => sum + (review.rating ?? 0),
+        0,
+      );
+      avg = Math.round((totalRating / reviews.length) * 10) / 10;
+    }
 
     return { reviews, avg };
   }

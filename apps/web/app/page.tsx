@@ -2,10 +2,17 @@ import Link from "next/link";
 import { API_BASE } from "@/lib/api";
 import NewRfqForm from "./components/NewRfqForm";
 
+export const dynamic = "force-dynamic";
+
 async function listRfq() {
-  const res = await fetch(`${API_BASE}/rfq`, { cache: "no-store" });
-  if (!res.ok) return [];
-  return res.json();
+  try {
+    const res = await fetch(`${API_BASE}/rfq`, { cache: "no-store" });
+    if (!res.ok) return [];
+    return res.json();
+  } catch (error) {
+    console.error("Failed to fetch RFQs", error);
+    return [];
+  }
 }
 
 export default async function Home() {
