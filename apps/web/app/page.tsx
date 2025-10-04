@@ -1,6 +1,4 @@
-import Link from "next/link";
-
-import { api, API_BASE, ApiRfq } from "@/lib/api";
+import { API_BASE } from "@/lib/api";
 import NewRfqForm from "./components/NewRfqForm";
 
 export const dynamic = "force-dynamic";
@@ -55,54 +53,99 @@ export default async function Home() {
     console.error("Failed to load RFQs", error);
   }
 
-  const stats = summariseRfqs(rfqs);
+const statusClassName = (status: string | null | undefined) => {
+  const normalized = (status || "").toLowerCase();
+  if (/(approved|accepted|active|awarded)/.test(normalized)) {
+    return "status-pill status-pill--approved";
+  }
+  if (/(closed|cancelled|rejected|expired)/.test(normalized)) {
+    return "status-pill status-pill--closed";
+  }
+  if (/(pending|review|submitted)/.test(normalized)) {
+    return "status-pill status-pill--pending";
+  }
+  if (/(draft)/.test(normalized)) {
+    return "status-pill status-pill--draft";
+  }
+  return "status-pill status-pill--pending";
+};
+
+const formatDate = (value: string | null | undefined) => {
+  if (!value) return "—";
+  try {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return new Intl.DateTimeFormat("en", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }).format(date);
+  } catch (error) {
+    return "—";
+  }
+};
+
+export default async function Home() {
+  const rfqs = await listRfq();
+  const totalRfqs = rfqs.length;
+  const activeRfqs = rfqs.filter((r: any) =>
+    String(r.status || "").toLowerCase().match(/pending|review|submitted|active/)
+  ).length;
+  const fulfilledRfqs = rfqs.filter((r: any) =>
+    String(r.status || "").toLowerCase().match(/closed|awarded|completed|accepted/)
+  ).length;
 
   return (
     <main className="page">
       <section className="card hero">
         <div className="hero__content">
-          <span className="hero__eyebrow">Supply Chain Control Center</span>
+          <span className="hero__eyebrow">TijaraLink Platform</span>
           <h1 className="hero__title">
-            Orchestrate RFQs, supplier responses, and fulfilment milestones in one view.
+            Procurement visibility and supplier collaboration in one elegant hub.
           </h1>
           <p className="hero__subtitle">
-            TijaraLink gives buyers, suppliers, and operators a shared workspace—from sourcing and quoting
-            through orders, escrow, and delivery.
+            Monitor every request-for-quote, engage trusted partners, and move from
+            sourcing to awarding with total confidence.
           </p>
           <div className="cta-row">
             <a className="button-primary" href="#create-rfq">
               Start a New RFQ
             </a>
-            <a className="button-secondary" href={`${API_BASE}/health`} target="_blank" rel="noreferrer">
+            <a
+              className="button-secondary"
+              href={`${API_BASE}/health`}
+              target="_blank"
+              rel="noreferrer"
+            >
               API Health Endpoint
             </a>
           </div>
         </div>
         <div className="badge-inline" style={{ alignSelf: "flex-start" }}>
           <span role="img" aria-hidden="true">
-            🔄
+            🔒
           </span>
-          Real-time updates using router.refresh()
+          Secure workflows with escrow-ready orders
         </div>
       </section>
 
       <section className="stats-grid">
         <div className="stat-card">
           <div className="stat-card__label">Open RFQs</div>
-          <div className="stat-card__value">{stats.open}</div>
+          <div className="stat-card__value">{activeRfqs}</div>
         </div>
         <div className="stat-card">
           <div className="stat-card__label">Fulfilled</div>
-          <div className="stat-card__value">{stats.fulfilled}</div>
+          <div className="stat-card__value">{fulfilledRfqs}</div>
         </div>
         <div className="stat-card">
           <div className="stat-card__label">Total Requests</div>
-          <div className="stat-card__value">{stats.total}</div>
+          <div className="stat-card__value">{totalRfqs}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-card__label">REST Endpoint</div>
+          <div className="stat-card__label">API Endpoint</div>
           <div className="stat-card__value" style={{ fontSize: "1rem" }}>
-            <a className="link-muted" href={`${API_BASE}/rfq`} target="_blank" rel="noreferrer">
+            <a href={`${API_BASE}/rfq`} className="link-muted" target="_blank" rel="noreferrer">
               /rfq
             </a>
           </div>
@@ -111,18 +154,18 @@ export default async function Home() {
 
       <section className="layout-grid">
         <div className="card card--compact">
-          <div className="hero__content" style={{ maxWidth: "100%", gap: "0.75rem" }}>
-            <span className="badge-inline" style={{ marginBottom: "0.75rem" }}>
+          <div className="hero__content" style={{ maxWidth: "100%", gap: "8px" }}>
+            <span className="badge-inline" style={{ marginBottom: "12px" }}>
               <span role="img" aria-hidden="true">
-                📈
+                📊
               </span>
-              Live pipeline
+              Live Pipeline
             </span>
             <h2 className="hero__title" style={{ fontSize: "2rem" }}>
-              Active requests for quote
+              Active Requests for Quote
             </h2>
             <p className="hero__subtitle" style={{ fontSize: "1rem" }}>
-              Review open demand, destinations, and creation dates. Jump directly into quote collaboration.
+              Track statuses, due dates, and destinations at a glance.
             </p>
           </div>
 
@@ -135,23 +178,17 @@ export default async function Home() {
                     <th>Status</th>
                     <th>Destination</th>
                     <th>Created</th>
-                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rfqs.map((rfq) => (
-                    <tr key={rfq.id}>
-                      <td>{rfq.title}</td>
+                  {rfqs.map((r: any) => (
+                    <tr key={r.id}>
+                      <td>{r.title}</td>
                       <td>
-                        <span className={statusBadge(rfq.status)}>{classifyStatus(rfq.status)}</span>
+                        <span className={statusClassName(r.status)}>{r.status}</span>
                       </td>
-                      <td>{rfq.destinationCountry || "—"}</td>
-                      <td>{formatDate(rfq.createdAt)}</td>
-                      <td>
-                        <Link className="link-muted" href={`/rfq/${rfq.id}`}>
-                          View quotes
-                        </Link>
-                      </td>
+                      <td>{r.destinationCountry || "—"}</td>
+                      <td>{formatDate(r.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -160,7 +197,9 @@ export default async function Home() {
           ) : (
             <div className="empty-state">
               <h3 style={{ marginBottom: "8px" }}>No RFQs yet</h3>
-              <p style={{ margin: 0 }}>Create your first request to invite suppliers.</p>
+              <p style={{ margin: 0 }}>
+                Create your first request to start collaborating with suppliers.
+              </p>
             </div>
           )}
         </div>
@@ -168,24 +207,18 @@ export default async function Home() {
         <aside id="create-rfq" className="card card--compact">
           <div className="form-card__title">Launch a new RFQ</div>
           <p className="form-card__subtitle">
-            Share your sourcing requirements with verified suppliers and receive quotes without friction.
+            Share your sourcing requirements with verified suppliers and receive
+            quotes without friction.
           </p>
           <NewRfqForm />
-          <div className="divider" />
-          <div className="quick-links">
-            <span className="quick-links__label">Quick links</span>
-            <div className="quick-links__items">
-              <Link href="/rfq" className="quick-link">
-                RFQ directory
-              </Link>
-              <Link href="/suppliers/demo-supplier/reviews" className="quick-link">
-                Supplier reviews
-              </Link>
-              <a className="quick-link" href={`${API_BASE}/docs`} target="_blank" rel="noreferrer">
-                API docs
-              </a>
-            </div>
-          </div>
+          <p className="footer-note" style={{ marginTop: "24px" }}>
+            Need to integrate programmatically? Explore the
+            {" "}
+            <a href={`${API_BASE}/docs`} className="link-muted" target="_blank" rel="noreferrer">
+              developer docs
+            </a>
+            .
+          </p>
         </aside>
       </section>
     </main>

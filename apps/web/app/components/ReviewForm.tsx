@@ -13,7 +13,7 @@ type Props = {
 export default function ReviewForm({ orderId, review }: Props) {
   const router = useRouter();
   const [rating, setRating] = useState(review?.rating ?? 5);
-  const [comment, setComment] = useState(review?.text ?? "");
+  const [comment, setComment] = useState(review?.comment ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);

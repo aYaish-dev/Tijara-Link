@@ -104,7 +104,7 @@ export default async function RfqDetails({ params }: { params: { id: string } })
                 <dl className="quote-meta">
                   <div>
                     <dt>Supplier</dt>
-                    <dd>{quote.supplierCompanyId || quote.supplierId || "—"}</dd>
+                    <dd>{quote.supplierId || "—"}</dd>
                   </div>
                   <div>
                     <dt>MOQ</dt>

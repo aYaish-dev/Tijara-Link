@@ -1,6 +1,10 @@
 import Link from "next/link";
 
-import { api, ApiOrder, ApiShipment, ApiCustoms, SupplierReviewsPayload } from "@/lib/api";
+import {
+  api,
+  ApiOrder,
+  ApiShipment,
+} from "@/lib/api";
 import ReleaseEscrowButton from "@/app/components/ReleaseEscrowButton";
 import CreateShipmentForm from "@/app/components/CreateShipmentForm";
 import SetShipmentStatusButton from "@/app/components/SetShipmentStatusButton";
@@ -38,14 +42,6 @@ function shipmentStatusBadge(status?: string | null) {
   return "status-pill status-pill--draft";
 }
 
-function normaliseCustoms(customs?: ApiCustoms[] | ApiCustoms | null): ApiCustoms | null {
-  if (!customs) return null;
-  if (Array.isArray(customs)) {
-    return customs[0] ?? null;
-  }
-  return customs;
-}
-
 function ShipmentActions({ shipment }: { shipment: ApiShipment }) {
   return (
     <div className="stack-horizontal">
@@ -73,7 +69,6 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
   const { id } = params;
 
   let order: ApiOrder | null = null;
-  let supplierReviews: SupplierReviewsPayload | null = null;
   try {
     order = await api.getOrder(id);
   } catch (error) {
@@ -97,17 +92,6 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
     );
   }
 
-  if (!order.review && order.supplierCompanyId) {
-    try {
-      supplierReviews = await api.listSupplierReviews(order.supplierCompanyId);
-    } catch (error) {
-      console.error("Failed to load supplier reviews for order", error);
-    }
-  }
-
-  const activeReview =
-    order.review ?? supplierReviews?.reviews.find((entry) => entry.orderId === order?.id) ?? null;
-
   return (
     <main className="detail-page">
       <header className="detail-header">
@@ -115,8 +99,8 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
           <p className="eyebrow">Order #{order.id}</p>
           <h1>{formatCurrency(order.totalMinor, order.totalCurrency)}</h1>
           <p className="section-subtitle">
-            Status: {order.status || "Pending"} • Created {formatDate(order.createdAt)} • Buyer {order.buyerCompanyId || order.buyerId || "—"} • Supplier {" "}
-            {order.supplierCompanyId || order.supplierId || "—"}
+            Status: {order.status || "Pending"} • Created {formatDate(order.createdAt)} • Buyer {order.buyerId || "—"} • Supplier {" "}
+            {order.supplierId || "—"}
           </p>
         </div>
         <Link className="button-secondary" href="/rfq">
@@ -174,34 +158,32 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
 
         {(order.shipments || []).length ? (
           <ul className="list-stack">
-            {order.shipments?.map((shipment) => {
-              const customs = normaliseCustoms(shipment.customs);
-              return (
-                <li key={shipment.id} className="shipment-card">
-                  <div className="shipment-card__header">
-                    <div>
-                      <p className="eyebrow">Shipment #{shipment.id}</p>
-                      <h3>{shipment.mode || "Mode not set"}</h3>
-                    </div>
-                    <span className={shipmentStatusBadge(shipment.status)}>{shipment.status || "Pending"}</span>
+            {order.shipments?.map((shipment) => (
+              <li key={shipment.id} className="shipment-card">
+                <div className="shipment-card__header">
+                  <div>
+                    <p className="eyebrow">Shipment #{shipment.id}</p>
+                    <h3>{shipment.mode || "Mode not set"}</h3>
                   </div>
-                  <p className="section-subtitle">Tracking: {shipment.tracking || "—"}</p>
-                  <ShipmentActions shipment={shipment} />
+                  <span className={shipmentStatusBadge(shipment.status)}>{shipment.status || "Pending"}</span>
+                </div>
+                <p className="section-subtitle">Tracking: {shipment.tracking || "—"}</p>
+                <ShipmentActions shipment={shipment} />
 
-                  <div className="divider" />
+                <div className="divider" />
 
-                  <div className="shipment-card__customs">
-                    <h4>Customs declaration</h4>
-                  {customs ? (
+                <div className="shipment-card__customs">
+                  <h4>Customs declaration</h4>
+                  {shipment.customs ? (
                     <div className="customs-summary">
                       <p>
-                        Status: <strong>{customs.status || "SUBMITTED"}</strong>
+                        Status: <strong>{shipment.customs.status || "SUBMITTED"}</strong>
                       </p>
-                      <p>HS Code: {customs.data?.hsCode || "—"}</p>
-                      <p>Docs: {(customs.data?.docs || []).join(", ") || "—"}</p>
+                      <p>HS Code: {shipment.customs.data?.hsCode || "—"}</p>
+                      <p>Docs: {(shipment.customs.data?.docs || []).join(", ") || "—"}</p>
                       <div className="stack-horizontal">
                         <SetCustomsStatusButton
-                          customsId={customs.id}
+                          customsId={shipment.customs.id}
                           status="CLEARED"
                           label="Mark customs cleared"
                         />
@@ -210,11 +192,10 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
                   ) : (
                     <p className="section-subtitle">No customs declaration linked yet.</p>
                   )}
-                  <AttachCustomsForm shipmentId={shipment.id} customs={customs} />
-                  </div>
-                </li>
-              );
-            })}
+                  <AttachCustomsForm shipmentId={shipment.id} customs={shipment.customs} />
+                </div>
+              </li>
+            ))}
           </ul>
         ) : (
           <div className="empty-state" style={{ marginTop: "1rem" }}>
@@ -267,7 +248,7 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
             </p>
           </div>
         </div>
-        <ReviewForm orderId={order.id} review={activeReview ?? undefined} />
+        <ReviewForm orderId={order.id} review={order.review} />
       </section>
     </main>
   );

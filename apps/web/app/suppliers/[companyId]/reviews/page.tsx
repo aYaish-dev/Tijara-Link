@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { api, ApiReview, SupplierReviewsPayload } from "@/lib/api";
+import { api, ApiReview } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -15,21 +15,26 @@ function formatDate(value?: string) {
   }).format(date);
 }
 
+function averageRating(reviews: ApiReview[]) {
+  if (!reviews.length) return 0;
+  const total = reviews.reduce((acc, review) => acc + (review.rating || 0), 0);
+  return total / reviews.length;
+}
+
 export default async function SupplierReviewsPage({ params }: { params: { companyId: string } }) {
   const { companyId } = params;
 
-  let payload: SupplierReviewsPayload | null = null;
+  let reviews: ApiReview[] = [];
   let error: string | null = null;
 
   try {
-    payload = await api.listSupplierReviews(companyId);
+    reviews = await api.listSupplierReviews(companyId);
   } catch (err) {
     console.error("Failed to load supplier reviews", err);
     error = (err as Error)?.message || "Unable to load reviews";
   }
 
-  const reviews: ApiReview[] = payload?.reviews ?? [];
-  const average = payload?.avg ?? 0;
+  const average = averageRating(reviews);
 
   return (
     <main className="detail-page">
@@ -58,7 +63,7 @@ export default async function SupplierReviewsPage({ params }: { params: { compan
                   <span className="review-card__meta">Order {review.orderId || "—"}</span>
                   <span className="review-card__meta">{formatDate(review.createdAt)}</span>
                 </div>
-                <p className="review-card__comment">{review.text || "No comment provided."}</p>
+                <p className="review-card__comment">{review.comment || "No comment provided."}</p>
               </li>
             ))}
           </ul>
