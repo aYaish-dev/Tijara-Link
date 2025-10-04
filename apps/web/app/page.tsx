@@ -2,6 +2,8 @@ import Link from "next/link";
 import { API_BASE } from "@/lib/api";
 import NewRfqForm from "./components/NewRfqForm";
 
+export const dynamic = "force-dynamic";
+
 async function listRfq() {
   try {
     const res = await fetch(`${API_BASE}/rfq`, { cache: "no-store" });

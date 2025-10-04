@@ -1,6 +1,8 @@
 import { API_BASE } from "@/lib/api";
 import RfqPageClient from "./RfqPageClient";
 
+export const dynamic = "force-dynamic";
+
 async function fetchJSON(url: string, init?: RequestInit) {
   const res = await fetch(url, { cache: "no-store", ...(init || {}) });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
