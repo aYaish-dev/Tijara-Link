@@ -41,6 +41,37 @@ export default function NewRfqForm() {
     formEl.reset();
   }
 
+    try {
+      const form = new FormData(formEl);
+      const payload = {
+        title: form.get("title"),
+        details: form.get("details"),
+        destinationCountry: form.get("dest") || "PS",
+      };
+
+      const res = await fetch(`${API_BASE}/rfq`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        alert("Failed to create RFQ");
+        return;
+      }
+
+      router.refresh();
+      // امسح الحقول بأمان
+      formEl.reset();
+    } catch (error) {
+      console.error("Failed to submit RFQ", error);
+      alert("Something went wrong while creating the RFQ. Please try again.");
+      return;
+    } finally {
+      setLoading(false);
+    }
+  }
+
 
   return (
     <form onSubmit={onSubmit} className="space-y-3 border p-4 rounded-md">
