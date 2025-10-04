@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Inject } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { ApiTags } from '@nestjs/swagger';
-import { CreateRfqDto } from './rfq.dto';
+import { CreateRfqDto } from '../dto/rfq.dto';
 @ApiTags('rfq')
 
 @Controller('rfq')

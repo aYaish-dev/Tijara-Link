@@ -1,4 +1,3 @@
-import { ReviewsController } from './reviews.controller';
 import { Module, Controller, Get } from '@nestjs/common';
 import { IdentityModule } from './identity/identity.module';
 import { RfqModule } from './rfq/rfq.module';
