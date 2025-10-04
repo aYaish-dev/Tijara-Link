@@ -1,98 +1,40 @@
-import { API_BASE } from "@/lib/api";
+// apps/web/app/page.tsx
+import { api, API_BASE, type ApiRfq } from "@/lib/api";
 import NewRfqForm from "./components/NewRfqForm";
 
 export const dynamic = "force-dynamic";
 
-function classifyStatus(status?: string | null) {
-  if (!status) return "Pending";
-  const normalized = status.toLowerCase();
-  if (/(accepted|approved|awarded|active)/.test(normalized)) return "Active";
-  if (/(closed|cancel|reject|expired)/.test(normalized)) return "Closed";
-  if (/(draft)/.test(normalized)) return "Draft";
-  return status;
-}
-
-function statusBadge(status?: string | null) {
+function statusClassName(status?: string | null) {
   const normalized = String(status || "pending").toLowerCase();
-  if (/(accepted|approved|awarded|active)/.test(normalized)) return "status-pill status-pill--approved";
-  if (/(closed|cancel|reject|expired)/.test(normalized)) return "status-pill status-pill--closed";
+  if (/(approved|accepted|active|awarded)/.test(normalized)) return "status-pill status-pill--approved";
+  if (/(closed|cancelled|canceled|rejected|expired)/.test(normalized)) return "status-pill status-pill--closed";
   if (/(draft)/.test(normalized)) return "status-pill status-pill--draft";
   return "status-pill status-pill--pending";
 }
 
-function formatDate(input?: string | null) {
-  if (!input) return "—";
-  const date = new Date(input);
-  if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("en", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(date);
-}
-
-function summariseRfqs(rfqs: ApiRfq[]) {
-  const total = rfqs.length;
-  const open = rfqs.filter((rfq) => {
-    const status = (rfq.status || "").toLowerCase();
-    return /(pending|review|submitted|active|accepted)/.test(status);
-  }).length;
-  const fulfilled = rfqs.filter((rfq) => {
-    const status = (rfq.status || "").toLowerCase();
-    return /(closed|awarded|completed|delivered)/.test(status);
-  }).length;
-
-  return { total, open, fulfilled };
+function formatDate(value?: string | null) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return new Intl.DateTimeFormat("en", { year: "numeric", month: "short", day: "numeric" }).format(d);
 }
 
 export default async function Home() {
   let rfqs: ApiRfq[] = [];
   try {
     rfqs = await api.listRfq();
-  } catch (error) {
-    console.error("Failed to load RFQs", error);
+  } catch (err) {
+    // بنعرض الصفحة حتى لو الـ API وقع
+    console.error("Failed to load RFQs", err);
+    rfqs = [];
   }
 
-const statusClassName = (status: string | null | undefined) => {
-  const normalized = (status || "").toLowerCase();
-  if (/(approved|accepted|active|awarded)/.test(normalized)) {
-    return "status-pill status-pill--approved";
-  }
-  if (/(closed|cancelled|rejected|expired)/.test(normalized)) {
-    return "status-pill status-pill--closed";
-  }
-  if (/(pending|review|submitted)/.test(normalized)) {
-    return "status-pill status-pill--pending";
-  }
-  if (/(draft)/.test(normalized)) {
-    return "status-pill status-pill--draft";
-  }
-  return "status-pill status-pill--pending";
-};
-
-const formatDate = (value: string | null | undefined) => {
-  if (!value) return "—";
-  try {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "—";
-    return new Intl.DateTimeFormat("en", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }).format(date);
-  } catch (error) {
-    return "—";
-  }
-};
-
-export default async function Home() {
-  const rfqs = await listRfq();
   const totalRfqs = rfqs.length;
-  const activeRfqs = rfqs.filter((r: any) =>
-    String(r.status || "").toLowerCase().match(/pending|review|submitted|active/)
+  const activeRfqs = rfqs.filter((r) =>
+    String(r.status || "").toLowerCase().match(/pending|review|submitted|active|accepted/)
   ).length;
-  const fulfilledRfqs = rfqs.filter((r: any) =>
-    String(r.status || "").toLowerCase().match(/closed|awarded|completed|accepted/)
+  const fulfilledRfqs = rfqs.filter((r) =>
+    String(r.status || "").toLowerCase().match(/closed|awarded|completed|delivered/)
   ).length;
 
   return (
@@ -100,31 +42,19 @@ export default async function Home() {
       <section className="card hero">
         <div className="hero__content">
           <span className="hero__eyebrow">TijaraLink Platform</span>
-          <h1 className="hero__title">
-            Procurement visibility and supplier collaboration in one elegant hub.
-          </h1>
+          <h1 className="hero__title">Procurement visibility and supplier collaboration in one elegant hub.</h1>
           <p className="hero__subtitle">
-            Monitor every request-for-quote, engage trusted partners, and move from
-            sourcing to awarding with total confidence.
+            Monitor every request-for-quote, engage trusted partners, and move from sourcing to awarding with total confidence.
           </p>
           <div className="cta-row">
-            <a className="button-primary" href="#create-rfq">
-              Start a New RFQ
-            </a>
-            <a
-              className="button-secondary"
-              href={`${API_BASE}/health`}
-              target="_blank"
-              rel="noreferrer"
-            >
+            <a className="button-primary" href="#create-rfq">Start a New RFQ</a>
+            <a className="button-secondary" href={`${API_BASE}/health`} target="_blank" rel="noreferrer">
               API Health Endpoint
             </a>
           </div>
         </div>
         <div className="badge-inline" style={{ alignSelf: "flex-start" }}>
-          <span role="img" aria-hidden="true">
-            🔒
-          </span>
+          <span role="img" aria-hidden>🔒</span>
           Secure workflows with escrow-ready orders
         </div>
       </section>
@@ -145,9 +75,7 @@ export default async function Home() {
         <div className="stat-card">
           <div className="stat-card__label">API Endpoint</div>
           <div className="stat-card__value" style={{ fontSize: "1rem" }}>
-            <a href={`${API_BASE}/rfq`} className="link-muted" target="_blank" rel="noreferrer">
-              /rfq
-            </a>
+            <a href={`${API_BASE}/rfq`} className="link-muted" target="_blank" rel="noreferrer">/rfq</a>
           </div>
         </div>
       </section>
@@ -156,14 +84,10 @@ export default async function Home() {
         <div className="card card--compact">
           <div className="hero__content" style={{ maxWidth: "100%", gap: "8px" }}>
             <span className="badge-inline" style={{ marginBottom: "12px" }}>
-              <span role="img" aria-hidden="true">
-                📊
-              </span>
+              <span role="img" aria-hidden>📊</span>
               Live Pipeline
             </span>
-            <h2 className="hero__title" style={{ fontSize: "2rem" }}>
-              Active Requests for Quote
-            </h2>
+            <h2 className="hero__title" style={{ fontSize: "2rem" }}>Active Requests for Quote</h2>
             <p className="hero__subtitle" style={{ fontSize: "1rem" }}>
               Track statuses, due dates, and destinations at a glance.
             </p>
@@ -181,12 +105,10 @@ export default async function Home() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rfqs.map((r: any) => (
+                  {rfqs.map((r) => (
                     <tr key={r.id}>
                       <td>{r.title}</td>
-                      <td>
-                        <span className={statusClassName(r.status)}>{r.status}</span>
-                      </td>
+                      <td><span className={statusClassName(r.status)}>{r.status || "Pending"}</span></td>
                       <td>{r.destinationCountry || "—"}</td>
                       <td>{formatDate(r.createdAt)}</td>
                     </tr>
@@ -197,9 +119,7 @@ export default async function Home() {
           ) : (
             <div className="empty-state">
               <h3 style={{ marginBottom: "8px" }}>No RFQs yet</h3>
-              <p style={{ margin: 0 }}>
-                Create your first request to start collaborating with suppliers.
-              </p>
+              <p style={{ margin: 0 }}>Create your first request to start collaborating with suppliers.</p>
             </div>
           )}
         </div>
@@ -207,17 +127,14 @@ export default async function Home() {
         <aside id="create-rfq" className="card card--compact">
           <div className="form-card__title">Launch a new RFQ</div>
           <p className="form-card__subtitle">
-            Share your sourcing requirements with verified suppliers and receive
-            quotes without friction.
+            Share your sourcing requirements with verified suppliers and receive quotes without friction.
           </p>
           <NewRfqForm />
           <p className="footer-note" style={{ marginTop: "24px" }}>
-            Need to integrate programmatically? Explore the
-            {" "}
+            Need to integrate programmatically? Explore the{" "}
             <a href={`${API_BASE}/docs`} className="link-muted" target="_blank" rel="noreferrer">
               developer docs
-            </a>
-            .
+            </a>.
           </p>
         </aside>
       </section>
