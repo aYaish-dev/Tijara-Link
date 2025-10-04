@@ -1,0 +1,34 @@
+import { PrismaClient, Role } from '@prisma/client';
+const prisma = new PrismaClient();
+
+async function main() {
+  const buyer = await prisma.company.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000001' },
+    update: {},
+    create: { id: '00000000-0000-0000-0000-000000000001', legalName: 'Pal Buyer Co.', countryCode: 'PS' }
+  });
+  const supplier = await prisma.company.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000002' },
+    update: {},
+    create: { id: '00000000-0000-0000-0000-000000000002', legalName: 'TR Supplier Ltd.', countryCode: 'TR' }
+  });
+
+  await prisma.user.createMany({
+    data: [
+      { id: '00000000-0000-0000-0000-000000000011', companyId: buyer.id, email: 'buyer@demo.ps', fullName: 'Buyer One', role: 'BUYER', password: 'x' },
+      { id: '00000000-0000-0000-0000-000000000012', companyId: supplier.id, email: 'supplier@demo.tr', fullName: 'Supplier One', role: 'SUPPLIER', password: 'x' }
+    ],
+    skipDuplicates: true
+  });
+
+  await prisma.product.createMany({
+    data: [
+      { companyId: supplier.id, nameI18n: { en: 'Cement (50kg)', ar: 'أسمنت (50كج)', tr: 'Çimento (50kg)' }, hsCode: '2523.29', unit: 'bag' },
+      { companyId: supplier.id, nameI18n: { en: 'Rebar Steel', ar: 'حديد تسليح', tr: 'İnşaat demiri' }, hsCode: '7214.20', unit: 'ton' }
+    ]
+  });
+
+  console.log('Seeded demo data.');
+}
+
+main().finally(async () => { await prisma.$disconnect(); });

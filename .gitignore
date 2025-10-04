@@ -1,0 +1,32 @@
+# env
+.env
+.env.*.local
+*.local
+
+# deps & build
+node_modules/
+.pnpm-store/
+.next/
+dist/
+build/
+coverage/
+.tmp/
+logs/
+*.log
+
+# framework caches
+.turbo/
+.vercel/
+.vite/
+.cache/
+
+# editors
+.idea/
+.vscode/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# temp files
+tmp-*.json

@@ -1,0 +1,255 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id             String   @id @default(uuid())
+  legalName      String
+  countryCode    String   @db.Char(2)
+  vatNumber      String?
+  users          User[]
+  products       Product[]
+  reviews        Review[]
+
+  // Back-relations
+  buyerRfqs      Rfq[]      @relation("BuyerCompanyRfqs")
+  buyerOrders    Order[]    @relation("BuyerOrders")
+  supplierOrders Order[]    @relation("SupplierOrders")
+  supplierQuotes Quote[]    @relation("SupplierQuotes")
+
+  createdAt      DateTime @default(now())
+}
+
+model User {
+  id        String  @id @default(uuid())
+  company   Company @relation(fields: [companyId], references: [id])
+  companyId String  // إلزامي (حلّ خطأ الاختيارية)
+  email     String  @unique
+  fullName  String
+  role      Role
+  password  String
+
+  // Back-relations
+  createdRfqs Rfq[] @relation("CreatorRfqs")
+
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  ADMIN
+  BUYER
+  SUPPLIER
+  AGENT
+}
+
+model Product {
+  id        String   @id @default(uuid())
+  company   Company  @relation(fields: [companyId], references: [id])
+  companyId String
+  nameI18n  Json
+  descI18n  Json?
+  hsCode    String?
+  unit      String?
+  createdAt DateTime @default(now())
+}
+
+model Rfq {
+  id                 String    @id @default(uuid())
+  // Buyer company (optional)
+  buyerCompany       Company?  @relation(name: "BuyerCompanyRfqs", fields: [buyerCompanyId], references: [id])
+  buyerCompanyId     String?
+
+  // Creator user (optional)
+  creator            User?     @relation(name: "CreatorRfqs", fields: [creatorUserId], references: [id])
+  creatorUserId      String?
+
+  title              String
+  details            String?
+  incoterm           String?
+  destinationCountry String?   @db.Char(2)
+  status             RfqStatus @default(OPEN)
+  items              RfqItem[]
+
+  // Back-relations
+  quotes             Quote[]   @relation("RfqQuotes")
+
+  createdAt          DateTime  @default(now())
+}
+
+enum RfqStatus {
+  OPEN
+  CLOSED
+  ORDERED
+}
+
+model RfqItem {
+  id        String @id @default(uuid())
+  rfq       Rfq    @relation(fields: [rfqId], references: [id])
+  rfqId     String
+  name      String
+  hsCode    String?
+  qty       Int
+  unit      String?
+}
+
+model Quote {
+  id                String   @id @default(uuid())
+
+  rfq               Rfq      @relation(name: "RfqQuotes", fields: [rfqId], references: [id])
+  rfqId             String
+
+  supplierCompany   Company  @relation(name: "SupplierQuotes", fields: [supplierCompanyId], references: [id])
+  supplierCompanyId String
+
+  currency          String   @db.Char(3)
+  pricePerUnitMinor Int
+  moq               Int?
+  leadTimeDays      Int?
+  validUntil        DateTime?
+  status            QuoteStatus @default(PENDING)
+
+  // Back-relations
+  order             Order?   @relation(name: "QuoteOrder")
+}
+
+enum QuoteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model Order {
+  id                String   @id @default(uuid())
+
+  quote             Quote    @relation(name: "QuoteOrder", fields: [quoteId], references: [id])
+  quoteId           String   @unique
+
+  buyerCompany      Company  @relation(name: "BuyerOrders", fields: [buyerCompanyId], references: [id])
+  buyerCompanyId    String
+
+  supplierCompany   Company  @relation(name: "SupplierOrders", fields: [supplierCompanyId], references: [id])
+  supplierCompanyId String
+
+  totalMinor        Int
+  totalCurrency     String   @db.Char(3)
+  status            OrderStatus @default(PLACED)
+
+  items             OrderItem[]
+
+  // Back-relations
+  escrow            Escrow?      @relation(name: "OrderEscrow")
+  shipments         Shipment[]   @relation(name: "OrderShipments")
+  contract          Contract?    @relation(name: "OrderContract")
+  reviews           Review[]     @relation(name: "OrderReviews")
+  documents         Document[]   @relation(name: "OrderDocuments")
+
+  createdAt         DateTime @default(now())
+}
+
+enum OrderStatus {
+  PLACED
+  IN_TRANSIT
+  CUSTOMS
+  DELIVERED
+  DISPUTED
+  CANCELLED
+}
+
+model OrderItem {
+  id        String @id @default(uuid())
+  order     Order  @relation(fields: [orderId], references: [id])
+  orderId   String
+  name      String
+  qty       Int
+  unit      String?
+  unitMinor Int
+}
+
+model Escrow {
+  id        String  @id @default(uuid())
+  order     Order   @relation(name: "OrderEscrow", fields: [orderId], references: [id])
+  orderId   String  @unique
+  heldMinor Int
+  currency  String  @db.Char(3)
+  released  Boolean @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Shipment {
+  id        String        @id @default(uuid())
+  order     Order         @relation(name: "OrderShipments", fields: [orderId], references: [id])
+  orderId   String
+  mode      ShipmentMode
+  tracking  String?
+  status    ShipmentStatus @default(BOOKED)
+  customs   CustomsDecl[]
+  createdAt DateTime @default(now())
+}
+
+enum ShipmentMode {
+  AIR
+  SEA
+  ROAD
+}
+
+enum ShipmentStatus {
+  BOOKED
+  PICKED_UP
+  IN_TRANSIT
+  AT_CUSTOMS
+  CLEARED
+  DELIVERED
+}
+
+model CustomsDecl {
+  id         String   @id @default(uuid())
+  shipment   Shipment @relation(fields: [shipmentId], references: [id])
+  shipmentId String
+  data       Json
+  status     String?
+}
+
+model Contract {
+  id        String   @id @default(uuid())
+  order     Order    @relation(name: "OrderContract", fields: [orderId], references: [id])
+  orderId   String   @unique
+  hash      String
+  buyerSignedAt    DateTime?
+  supplierSignedAt DateTime?
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  company   Company  @relation(fields: [companyId], references: [id])
+  companyId String
+  order     Order    @relation(name: "OrderReviews", fields: [orderId], references: [id])
+  orderId   String   @unique
+  rating    Int
+  text      String?
+  createdAt DateTime @default(now())
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  order     Order?   @relation(name: "OrderDocuments", fields: [orderId], references: [id])
+  orderId   String?
+  url       String
+  sha256    String
+  kind      String
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String?
+  entity    String
+  entityId  String
+  action    String
+  diff      Json?
+  at        DateTime @default(now())
+}
