@@ -10,36 +10,42 @@ export default function NewRfqForm() {
     process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-  e.preventDefault();
-  setLoading(true);
+    e.preventDefault();
+    setLoading(true);
 
-  // خُزّن المرجع قبل أي await
-  const formEl = e.currentTarget;
+    // خُزّن المرجع قبل أي await
+    const formEl = e.currentTarget;
 
-  const form = new FormData(formEl);
-  const payload = {
-    title: form.get("title"),
-    details: form.get("details"),
-    destinationCountry: form.get("dest") || "PS",
-  };
+    try {
+      const form = new FormData(formEl);
+      const payload = {
+        title: form.get("title"),
+        details: form.get("details"),
+        destinationCountry: form.get("dest") || "PS",
+      };
 
-  const res = await fetch(`${API_BASE}/rfq`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+      const res = await fetch(`${API_BASE}/rfq`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-  setLoading(false);
+      if (!res.ok) {
+        alert("Failed to create RFQ");
+        return;
+      }
 
-  if (!res.ok) {
-    alert("Failed to create RFQ");
-    return;
+      router.refresh();
+      // امسح الحقول بأمان
+      formEl.reset();
+    } catch (error) {
+      console.error("Failed to submit RFQ", error);
+      alert("Something went wrong while creating the RFQ. Please try again.");
+      return;
+    } finally {
+      setLoading(false);
+    }
   }
-
-  router.refresh();
-  // امسح الحقول بأمان
-  formEl.reset();
-}
 
 
   return (
