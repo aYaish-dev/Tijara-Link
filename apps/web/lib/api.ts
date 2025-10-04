@@ -1,117 +1,258 @@
 export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_API_BASE ||
+  "http://localhost:3001";
 
-async function json<T = any>(res: Response): Promise<T> {
+type MaybeWithError<T> = T & { error?: boolean; message?: string };
+
+async function parseJson<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`API ${res.status}: ${text || res.statusText}`);
   }
-  return res.json() as Promise<T>;
+
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
+  const text = await res.text().catch(() => "");
+  if (!text) {
+    return undefined as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch (error) {
+    throw new Error("Failed to parse API response");
+  }
 }
 
-function ensureNoError<T extends Record<string, any>>(data: T): T {
+function ensureNoError<T>(data: MaybeWithError<T>): T {
   if (data && typeof data === "object" && "error" in data && data.error) {
     throw new Error(data.message || "API error");
   }
-  return data;
+  return data as T;
+}
+
+export type ApiRfq = {
+  id: string;
+  title: string;
+  status?: string | null;
+  details?: string | null;
+  destinationCountry?: string | null;
+  createdAt?: string;
+};
+
+export type ApiQuote = {
+  id: string;
+  supplierId?: string | null;
+  supplierCompanyId?: string | null;
+  status?: string | null;
+  currency?: string | null;
+  pricePerUnitMinor: number;
+  moq?: number | null;
+  leadTimeDays?: number | null;
+};
+
+export type ApiEscrow = {
+  released: boolean;
+  heldMinor: number;
+  currency: string;
+};
+
+export type ApiCustoms = {
+  id: string;
+  status?: string | null;
+  data?: {
+    hsCode?: string;
+    docs?: string[];
+  } | null;
+  submittedAt?: string | null;
+  clearedAt?: string | null;
+};
+
+export type ApiShipment = {
+  id: string;
+  orderId?: string;
+  mode?: string | null;
+  tracking?: string | null;
+  status?: string | null;
+  customs?: ApiCustoms[] | ApiCustoms | null;
+};
+
+export type ApiContract = {
+  id: string;
+  hash: string;
+  terms?: string | null;
+  createdAt?: string;
+  buyerSignedAt?: string | null;
+  supplierSignedAt?: string | null;
+};
+
+export type ApiReview = {
+  id?: string;
+  rating: number;
+  text?: string | null;
+  orderId?: string;
+  companyId?: string;
+  supplierCompanyId?: string;
+  createdAt?: string;
+};
+
+export type SupplierReviewsPayload = {
+  reviews: ApiReview[];
+  avg: number;
+};
+
+export type ApiOrder = {
+  id: string;
+  status?: string | null;
+  totalMinor?: number;
+  totalCurrency?: string | null;
+  createdAt?: string;
+  buyerId?: string | null;
+  buyerCompanyId?: string | null;
+  supplierId?: string | null;
+  supplierCompanyId?: string | null;
+  escrow?: ApiEscrow | null;
+  shipments?: ApiShipment[];
+  contract?: ApiContract | null;
+  review?: ApiReview | null;
+};
+
+async function request<T>(input: RequestInfo, init?: RequestInit) {
+  const response = await fetch(input, init);
+  const data = await parseJson<T | MaybeWithError<T>>(response);
+  return ensureNoError(data as MaybeWithError<T>);
 }
 
 export const api = {
-  // المستخدمة في app/page.tsx
-  async listRfq(): Promise<Array<{ id: string; title: string; status: string; destinationCountry: string; createdAt: string }>> {
-    const res = await fetch(`${API_BASE}/rfq`, { cache: "no-store" });
-    return json(res);
+  async listRfq(): Promise<ApiRfq[]> {
+    return request<ApiRfq[]>(`${API_BASE}/rfq`, { cache: "no-store" });
   },
 
-  // أمثلة إضافية إن حبيت تستعملها لاحقًا:
-  async listQuotes(rfqId: string) {
-    const res = await fetch(`${API_BASE}/quotes/rfq/${rfqId}`, { cache: "no-store" });
-    return json(res);
-  },
-  async acceptQuote(id: string) {
-    const res = await fetch(`${API_BASE}/quotes/${id}/accept`, { method: "POST" });
-    return json(res);
+  async createRfq(payload: {
+    title: FormDataEntryValue | null;
+    details: FormDataEntryValue | null;
+    destinationCountry: FormDataEntryValue | null;
+  }): Promise<ApiRfq> {
+    return request<ApiRfq>(`${API_BASE}/rfq`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: payload.title,
+        details: payload.details,
+        destinationCountry: payload.destinationCountry,
+      }),
+    });
   },
 
-  async createOrder(payload: { quoteId: string; totalMinor?: number; totalCurrency?: string }) {
-    const res = await fetch(`${API_BASE}/orders`, {
+  async listQuotesByRfq(rfqId: string): Promise<ApiQuote[]> {
+    return request<ApiQuote[]>(`${API_BASE}/quotes/rfq/${rfqId}`, {
+      cache: "no-store",
+    });
+  },
+
+  async listOrders(): Promise<ApiOrder[]> {
+    return request<ApiOrder[]>(`${API_BASE}/orders`, { cache: "no-store" });
+  },
+
+  async acceptQuote(quoteId: string) {
+    return request(`${API_BASE}/quotes/${quoteId}/accept`, {
+      method: "POST",
+    });
+  },
+
+  async createOrder(payload: {
+    quoteId: string;
+    totalMinor?: number;
+    totalCurrency?: string | null;
+  }): Promise<ApiOrder> {
+    return request<ApiOrder>(`${API_BASE}/orders`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    return ensureNoError(await json(res));
   },
 
-  async getOrder(id: string) {
-    const res = await fetch(`${API_BASE}/orders/${id}`, { cache: "no-store" });
-    return ensureNoError(await json(res));
+  async getOrder(id: string): Promise<ApiOrder> {
+    return request<ApiOrder>(`${API_BASE}/orders/${id}`, { cache: "no-store" });
   },
 
   async releaseEscrow(orderId: string) {
-    const res = await fetch(`${API_BASE}/orders/${orderId}/escrow/release`, { method: "POST" });
-    return ensureNoError(await json(res));
+    return request(`${API_BASE}/orders/${orderId}/escrow/release`, {
+      method: "POST",
+    });
   },
 
-  async createShipment(orderId: string, payload: { mode?: string; trackingNumber?: string; tracking?: string }) {
-    const res = await fetch(`${API_BASE}/orders/${orderId}/shipments`, {
+  async createShipment(
+    orderId: string,
+    payload: {
+      mode?: string;
+      trackingNumber?: string;
+    }
+  ): Promise<ApiShipment> {
+    return request<ApiShipment>(`${API_BASE}/orders/${orderId}/shipments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    return ensureNoError(await json(res));
   },
 
   async setShipmentStatus(shipmentId: string, status: string) {
-    const res = await fetch(`${API_BASE}/shipments/${shipmentId}/status`, {
+    return request(`${API_BASE}/shipments/${shipmentId}/status`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
-    return ensureNoError(await json(res));
   },
 
-  async createCustoms(shipmentId: string, payload: { data?: Record<string, any>; status?: string | null }) {
-    const res = await fetch(`${API_BASE}/shipments/${shipmentId}/customs`, {
+  async attachCustoms(
+    shipmentId: string,
+    payload: { data: { hsCode?: string; docs?: string[] }; status: string }
+  ) {
+    return request(`${API_BASE}/shipments/${shipmentId}/customs`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    return ensureNoError(await json(res));
   },
 
-  async updateCustomsStatus(customsId: string, status: string) {
-    const res = await fetch(`${API_BASE}/customs/${customsId}/status`, {
+  async setCustomsStatus(customsId: string, status: string) {
+    return request(`${API_BASE}/customs/${customsId}/status`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
-    return ensureNoError(await json(res));
   },
 
   async createContract(orderId: string, terms: string) {
-    const res = await fetch(`${API_BASE}/contracts/order/${orderId}`, {
+    return request<ApiContract>(`${API_BASE}/contracts/order/${orderId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ terms }),
     });
-    return ensureNoError(await json(res));
   },
 
   async signContract(contractId: string, role: "buyer" | "supplier") {
-    const res = await fetch(`${API_BASE}/contracts/${contractId}/sign`, {
+    return request(`${API_BASE}/contracts/${contractId}/sign`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role }),
     });
-    return ensureNoError(await json(res));
   },
 
   async upsertReview(orderId: string, rating: number, comment: string) {
-    const res = await fetch(`${API_BASE}/orders/${orderId}/review`, {
+    return request(`${API_BASE}/orders/${orderId}/review`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rating, comment }),
     });
-    return ensureNoError(await json(res));
-  }
+  },
+
+  async listSupplierReviews(companyId: string): Promise<SupplierReviewsPayload> {
+    return request<SupplierReviewsPayload>(`${API_BASE}/suppliers/${companyId}/reviews`, {
+      cache: "no-store",
+    });
+  },
 };
