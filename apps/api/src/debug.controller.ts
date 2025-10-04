@@ -8,7 +8,7 @@ export class DebugController {
   @Get('db')
   async db() {
     try {
-      const one = await this.prisma.$queryRawUnsafe<any[]>('SELECT 1 as ok');
+      const one = (await this.prisma.$queryRawUnsafe('SELECT 1 as ok')) as Array<{ ok: number }>;
       const rfqCount = await this.prisma.rfq.count().catch(() => -1);
       return { ok: true, engine: one, rfqCount };
     } catch (e: any) {
