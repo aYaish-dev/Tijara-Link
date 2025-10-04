@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 
+import { API_BASE } from '@/lib/api'
+
 type Rfq = { id: string; title: string; status: string }
 
 export default function RFQList() {
@@ -8,7 +10,7 @@ export default function RFQList() {
   const [err, setErr] = useState<string | null>(null)
 
   useEffect(() => {
-    const url = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/rfq';
+    const url = `${API_BASE}/rfq`;
     fetch(url)
       .then(async (r) => {
         const data = await r.json().catch(() => (null))

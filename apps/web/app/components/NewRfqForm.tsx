@@ -3,43 +3,43 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { API_BASE } from "@/lib/api";
+
 export default function NewRfqForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const API_BASE =
-    process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-  e.preventDefault();
-  setLoading(true);
+    e.preventDefault();
+    setLoading(true);
 
-  // خُزّن المرجع قبل أي await
-  const formEl = e.currentTarget;
+    // خُزّن المرجع قبل أي await
+    const formEl = e.currentTarget;
 
-  const form = new FormData(formEl);
-  const payload = {
-    title: form.get("title"),
-    details: form.get("details"),
-    destinationCountry: form.get("dest") || "PS",
-  };
+    const form = new FormData(formEl);
+    const payload = {
+      title: form.get("title"),
+      details: form.get("details"),
+      destinationCountry: form.get("dest") || "PS",
+    };
 
-  const res = await fetch(`${API_BASE}/rfq`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+    const res = await fetch(`${API_BASE}/rfq`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-  setLoading(false);
+    setLoading(false);
 
-  if (!res.ok) {
-    alert("Failed to create RFQ");
-    return;
+    if (!res.ok) {
+      alert("Failed to create RFQ");
+      return;
+    }
+
+    router.refresh();
+    // امسح الحقول بأمان
+    formEl.reset();
   }
-
-  router.refresh();
-  // امسح الحقول بأمان
-  formEl.reset();
-}
 
 
   return (
