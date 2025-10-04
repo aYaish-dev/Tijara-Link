@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Param, Inject } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { PrismaService } from './prisma.service';
 import { IdParamDto } from './dto/id-param.dto';
+import { CreateOrderDto } from './dto/orders.dto';
 
 @ApiTags('orders')
 @Controller('orders')
@@ -26,21 +27,21 @@ export class OrdersController {
   // POST /orders  → إنشاء طلب من Quote
   // body: { quoteId: string, totalMinor?: number, totalCurrency?: string }
   @Post()
-  async createFromQuote(@Body() dto: any) {
+  async createFromQuote(@Body() dto: CreateOrderDto) {
     try {
-      const quoteId = (dto?.quoteId || '').toString().trim();
+      const quoteId = dto.quoteId.toString().trim();
       if (!quoteId) throw new Error('quoteId is required');
 
       const quote = await this.prisma.quote.findUnique({ where: { id: quoteId } });
       if (!quote) throw new Error('Quote not found');
 
       // totalMinor: إن لم يُرسل، نستخدم pricePerUnitMinor من الـ Quote
-      const totalMinor = Number(dto?.totalMinor ?? quote.pricePerUnitMinor ?? 0);
+      const totalMinor = Number(dto.totalMinor ?? quote.pricePerUnitMinor ?? 0);
       if (!Number.isFinite(totalMinor) || totalMinor <= 0) {
         throw new Error('totalMinor must be > 0');
       }
       const totalCurrency =
-        (dto?.totalCurrency || quote.currency || 'USD').toString().toUpperCase().slice(0, 3);
+        (dto.totalCurrency || quote.currency || 'USD').toString().toUpperCase().slice(0, 3);
 
       // المشتري الديمو (بدون upsert على non-unique)
       let buyer = await this.prisma.company.findFirst({
