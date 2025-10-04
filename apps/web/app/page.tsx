@@ -3,16 +3,55 @@ import NewRfqForm from "./components/NewRfqForm";
 
 export const dynamic = "force-dynamic";
 
-async function listRfq() {
-  try {
-    const res = await fetch(`${API_BASE}/rfq`, { cache: "no-store" });
-    if (!res.ok) return [];
-    return res.json();
-  } catch (error) {
-    console.error("Failed to fetch RFQs", error);
-    return [];
-  }
+function classifyStatus(status?: string | null) {
+  if (!status) return "Pending";
+  const normalized = status.toLowerCase();
+  if (/(accepted|approved|awarded|active)/.test(normalized)) return "Active";
+  if (/(closed|cancel|reject|expired)/.test(normalized)) return "Closed";
+  if (/(draft)/.test(normalized)) return "Draft";
+  return status;
 }
+
+function statusBadge(status?: string | null) {
+  const normalized = String(status || "pending").toLowerCase();
+  if (/(accepted|approved|awarded|active)/.test(normalized)) return "status-pill status-pill--approved";
+  if (/(closed|cancel|reject|expired)/.test(normalized)) return "status-pill status-pill--closed";
+  if (/(draft)/.test(normalized)) return "status-pill status-pill--draft";
+  return "status-pill status-pill--pending";
+}
+
+function formatDate(input?: string | null) {
+  if (!input) return "—";
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
+function summariseRfqs(rfqs: ApiRfq[]) {
+  const total = rfqs.length;
+  const open = rfqs.filter((rfq) => {
+    const status = (rfq.status || "").toLowerCase();
+    return /(pending|review|submitted|active|accepted)/.test(status);
+  }).length;
+  const fulfilled = rfqs.filter((rfq) => {
+    const status = (rfq.status || "").toLowerCase();
+    return /(closed|awarded|completed|delivered)/.test(status);
+  }).length;
+
+  return { total, open, fulfilled };
+}
+
+export default async function Home() {
+  let rfqs: ApiRfq[] = [];
+  try {
+    rfqs = await api.listRfq();
+  } catch (error) {
+    console.error("Failed to load RFQs", error);
+  }
 
 const statusClassName = (status: string | null | undefined) => {
   const normalized = (status || "").toLowerCase();

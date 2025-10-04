@@ -1,38 +1,94 @@
-'use client'
-import { useEffect, useState } from 'react'
+import Link from "next/link";
 
-import { API_BASE } from '@/lib/api'
+import { api, ApiRfq } from "@/lib/api";
 
-type Rfq = { id: string; title: string; status: string }
+export const dynamic = "force-dynamic";
 
-export default function RFQList() {
-  const [rfqs, setRfqs] = useState<Rfq[]>([])
-  const [err, setErr] = useState<string | null>(null)
+function formatDate(input?: string | null) {
+  if (!input) return "—";
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
 
-  useEffect(() => {
-    const url = `${API_BASE}/rfq`;
-    fetch(url)
-      .then(async (r) => {
-        const data = await r.json().catch(() => (null))
-        if (Array.isArray(data)) {
-          setRfqs(data)
-        } else {
-          setRfqs([])
-          setErr('API returned non-list response')
-          console.warn('RFQ API unexpected:', data)
-        }
-      })
-      .catch((e) => { setErr(e.message || 'fetch failed'); setRfqs([]) })
-  }, [])
+export default async function RfqIndexPage() {
+  let rfqs: ApiRfq[] = [];
+  let error: string | null = null;
+
+  try {
+    rfqs = await api.listRfq();
+  } catch (err) {
+    console.error(err);
+    error = (err as Error)?.message || "Unable to load RFQs";
+  }
 
   return (
-    <main className="p-8">
-      <h2 className="text-xl font-semibold">RFQs</h2>
-      {err && <p className="mt-2 text-red-600">⚠ {err}</p>}
-      <ul className="mt-4 space-y-2">
-        {rfqs.map(x => <li key={x.id} className="border p-3 rounded">{x.title} — {x.status}</li>)}
-      </ul>
-      {(!err && rfqs.length === 0) && <p className="mt-4 text-gray-500">لا توجد RFQs بعد.</p>}
+    <main className="detail-page">
+      <header className="detail-header">
+        <div>
+          <p className="eyebrow">Buyer workspace</p>
+          <h1>Requests for quote</h1>
+        </div>
+        <Link className="button-primary" href="/">
+          ← Back to overview
+        </Link>
+      </header>
+
+      {error && <div className="alert alert--error">{error}</div>}
+
+      <section className="card">
+        <div className="section-heading">
+          <div>
+            <h2>Live RFQs</h2>
+            <p className="section-subtitle">
+              All demand captured from buyers. Open any request to inspect supplier quotes.
+            </p>
+          </div>
+          <span className="badge-inline">{rfqs.length} total</span>
+        </div>
+
+        {rfqs.length ? (
+          <div className="table-wrapper">
+            <table className="rfq-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Title</th>
+                  <th>Status</th>
+                  <th>Destination</th>
+                  <th>Created</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rfqs.map((rfq) => (
+                  <tr key={rfq.id}>
+                    <td className="mono">{rfq.id}</td>
+                    <td>{rfq.title}</td>
+                    <td>{rfq.status || "Pending"}</td>
+                    <td>{rfq.destinationCountry || "—"}</td>
+                    <td>{formatDate(rfq.createdAt)}</td>
+                    <td>
+                      <Link className="link-muted" href={`/rfq/${rfq.id}`}>
+                        View quotes
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="empty-state">
+            <h3>No RFQs registered yet</h3>
+            <p>Publish a request from the landing page to begin receiving supplier responses.</p>
+          </div>
+        )}
+      </section>
     </main>
-  )
+  );
 }

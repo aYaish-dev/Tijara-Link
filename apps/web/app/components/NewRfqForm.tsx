@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { API_BASE } from "@/lib/api";
+import { api } from "@/lib/api";
 
 export default function NewRfqForm() {
   const router = useRouter();
@@ -17,22 +17,11 @@ export default function NewRfqForm() {
 
     try {
       const form = new FormData(formEl);
-      const payload = {
+      await api.createRfq({
         title: form.get("title"),
         details: form.get("details"),
         destinationCountry: form.get("dest") || "PS",
-      };
-
-      const res = await fetch(`${API_BASE}/rfq`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
       });
-
-      if (!res.ok) {
-        alert("Failed to create RFQ");
-        return;
-      }
 
       router.refresh();
       formEl.reset();
