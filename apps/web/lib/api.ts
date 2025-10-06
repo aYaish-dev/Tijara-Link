@@ -43,6 +43,21 @@ export type ApiRfq = {
   createdAt?: string;
 };
 
+export type ApiAuthClaims = {
+  sub: string;
+  email: string;
+  role: string;
+  companyId: string;
+  fullName: string;
+};
+
+export type ApiAuthResponse = {
+  accessToken: string;
+  tokenType: 'Bearer';
+  expiresIn: number;
+  claims: ApiAuthClaims;
+};
+
 export type ApiQuote = {
   id: string;
   supplierId?: string | null;
@@ -239,6 +254,14 @@ export const api = {
   async listSupplierReviews(companyId: string) {
     return request<ApiReview[]>(`${API_BASE}/suppliers/${companyId}/reviews`, {
       cache: "no-store",
+    });
+  },
+
+  async login(credentials: { email: string; password: string }) {
+    return request<ApiAuthResponse>(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(credentials),
     });
   },
 };
