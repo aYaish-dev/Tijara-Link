@@ -40,6 +40,9 @@ export default function SiteHeader() {
           <Link href="/orders" className={navLinkClassName(pathname?.startsWith("/orders") ?? false)}>
             Orders
           </Link>
+          <Link href="/contact" className={navLinkClassName(pathname?.startsWith("/contact") ?? false)}>
+            Contact
+          </Link>
         </nav>
         <div className="site-header__actions">
           {isHydrated && session ? (

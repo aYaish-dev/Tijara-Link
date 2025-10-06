@@ -3,7 +3,7 @@ import Link from "next/link";
 import SignContractButton from "@/app/components/SignContractButton";
 import { api, ApiOrder } from "@/lib/api";
 
-import { mockSellerSession } from "../layout";
+import { mockSellerSession } from "../session";
 
 export const dynamic = "force-dynamic";
 

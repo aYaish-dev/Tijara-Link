@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { api, ApiReview, SupplierReviewsPayload } from "@/lib/api";
 
-import { mockSellerSession } from "../layout";
+import { mockSellerSession } from "../session";
 
 export const dynamic = "force-dynamic";
 
