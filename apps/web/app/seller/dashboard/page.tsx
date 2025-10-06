@@ -6,27 +6,27 @@ import { useEffect } from "react";
 
 import { useAuth } from "../../providers/AuthProvider";
 
-export default function BuyerDashboardPage() {
+export default function SellerDashboardPage() {
   const router = useRouter();
   const { session, isHydrated } = useAuth();
 
   useEffect(() => {
     if (!isHydrated) return;
     if (!session) {
-      router.replace("/login?role=buyer&redirect=/buyer/dashboard");
+      router.replace("/login?role=seller&redirect=/seller/dashboard");
       return;
     }
-    if (session.role !== "buyer") {
-      router.replace("/seller/dashboard");
+    if (session.role !== "seller") {
+      router.replace("/buyer/dashboard");
     }
   }, [isHydrated, router, session]);
 
-  if (!isHydrated || !session || session.role !== "buyer") {
+  if (!isHydrated || !session || session.role !== "seller") {
     return (
       <main className="page">
         <section className="card">
           <h1>Redirecting…</h1>
-          <p>Checking your access and preparing your workspace.</p>
+          <p>Checking your access and preparing supplier insights.</p>
         </section>
       </main>
     );
@@ -36,17 +36,17 @@ export default function BuyerDashboardPage() {
     <main className="page">
       <section className="card hero">
         <div className="hero__content">
-          <span className="hero__eyebrow">Buyer Workspace</span>
-          <h1 className="hero__title">Welcome back, {session.name ?? session.email}!</h1>
+          <span className="hero__eyebrow">Seller Workspace</span>
+          <h1 className="hero__title">Great to see you, {session.name ?? session.email}!</h1>
           <p className="hero__subtitle">
-            Launch RFQs, review supplier responses, and keep procurement moving forward.
+            Respond to RFQs, manage contracts, and stay ahead of buyer expectations.
           </p>
           <div className="cta-row">
-            <Link className="button-primary" href="/#create-rfq">
-              Start a new RFQ
+            <Link className="button-primary" href="/rfq">
+              Discover active RFQs
             </Link>
-            <Link className="button-secondary" href="/orders">
-              Review open orders
+            <Link className="button-secondary" href="/suppliers">
+              Update your profile
             </Link>
           </div>
         </div>
@@ -55,39 +55,39 @@ export default function BuyerDashboardPage() {
       <section className="layout-grid">
         <div className="card card--compact">
           <div className="hero__content" style={{ maxWidth: "100%", gap: "8px" }}>
-            <h2 className="hero__title" style={{ fontSize: "1.75rem" }}>Quick buyer links</h2>
+            <h2 className="hero__title" style={{ fontSize: "1.75rem" }}>Quick seller actions</h2>
             <p className="hero__subtitle" style={{ fontSize: "1rem" }}>
-              Jump into your most common workflows in just a click.
+              Stay responsive and highlight what sets your team apart.
             </p>
           </div>
           <ul className="dashboard-list">
             <li>
               <Link href="/rfq" className="dashboard-link">
-                View all RFQs
+                Browse open opportunities
               </Link>
             </li>
             <li>
               <Link href="/orders" className="dashboard-link">
-                Track purchase orders
+                Manage escrow-backed orders
               </Link>
             </li>
             <li>
               <Link href="/suppliers" className="dashboard-link">
-                Browse verified suppliers
+                Share testimonials and reviews
               </Link>
             </li>
           </ul>
         </div>
 
         <aside className="card card--compact">
-          <h3 style={{ marginTop: 0 }}>Latest updates</h3>
+          <h3 style={{ marginTop: 0 }}>Marketplace tips</h3>
           <p style={{ color: "var(--muted)", marginBottom: "12px" }}>
-            This is a mock dashboard. Connect the API to surface live RFQ status summaries.
+            Boost your win rate with actionable insights from successful suppliers.
           </p>
           <ul className="dashboard-updates">
-            <li>✔️ Supplier profiles refreshed hourly.</li>
-            <li>📬 Escrow workflows support digital signatures.</li>
-            <li>⚡ Import RFQs directly from spreadsheets.</li>
+            <li>💬 Reply to RFQs within 24 hours to stay top-of-mind.</li>
+            <li>📈 Keep catalogs updated to showcase inventory strength.</li>
+            <li>🤝 Highlight certifications to build trust quickly.</li>
           </ul>
         </aside>
       </section>
