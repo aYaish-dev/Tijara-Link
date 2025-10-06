@@ -14,12 +14,9 @@ function shipmentStatusBadge(status?: string | null) {
   return "status-pill status-pill--draft";
 }
 
-function normaliseCustoms(customs?: ApiCustoms[] | ApiCustoms | null): ApiCustoms | null {
-  if (!customs) return null;
-  if (Array.isArray(customs)) {
-    return customs[0] ?? null;
-  }
-  return customs;
+function normaliseCustoms(customs?: ApiCustoms[] | null): ApiCustoms | null {
+  if (!customs?.length) return null;
+  return customs[0] ?? null;
 }
 
 export default async function AdminShipmentsPage() {
