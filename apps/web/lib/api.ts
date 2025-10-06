@@ -119,9 +119,9 @@ export type ApiOrder = {
   supplierId?: string | null;
   supplierCompanyId?: string | null;
   escrow?: ApiEscrow | null;
-  shipments?: ApiShipment[];
+  shipments: ApiShipment[];
   contract?: ApiContract | null;
-  review?: ApiReview | null;
+  review: ApiReview | null;
 };
 
 export type SupplierReviewsPayload = {

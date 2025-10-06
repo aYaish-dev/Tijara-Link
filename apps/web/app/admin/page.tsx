@@ -72,7 +72,7 @@ export default async function AdminDashboard() {
     orders = [];
   }
 
-  const shipments: ApiShipment[] = orders.flatMap((order) => order.shipments || []);
+  const shipments: ApiShipment[] = orders.flatMap((order) => order.shipments);
 
   const rfqStats = {
     open: rfqs.filter((rfq) => !/CLOSED/.test(toStatusKey(rfq.status))).length,
@@ -93,9 +93,7 @@ export default async function AdminDashboard() {
 
   const supplierIds = Array.from(
     new Set(
-      orders
-        .map((order) => order.supplierCompanyId || order.supplierId)
-        .filter((value): value is string => Boolean(value))
+      orders.map((order) => order.supplierId).filter((value): value is string => Boolean(value))
     )
   );
 

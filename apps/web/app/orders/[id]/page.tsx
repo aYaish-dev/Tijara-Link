@@ -105,8 +105,8 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
           <p className="eyebrow">Order #{order.id}</p>
           <h1>{formatCurrency(order.totalMinor, order.totalCurrency)}</h1>
           <p className="section-subtitle">
-            Status: {order.status || "Pending"} • Created {formatDate(order.createdAt)} • Buyer {order.buyerId || "—"} • Supplier {" "}
-            {order.supplierId || "—"}
+            Status: {order.status || "Pending"} • Created {formatDate(order.createdAt)} • Buyer {order.buyerId ?? "—"} • Supplier {" "}
+            {order.supplierId ?? "—"}
           </p>
         </div>
         <Link className="button-secondary" href="/rfq">
@@ -157,12 +157,12 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
               Create consignments, attach customs, and keep status aligned with operations.
             </p>
           </div>
-          <span className="badge-inline">{order.shipments?.length || 0} records</span>
+          <span className="badge-inline">{order.shipments.length} records</span>
         </div>
 
         <CreateShipmentForm orderId={order.id} />
 
-        {(order.shipments || []).length ? (
+        {order.shipments.length ? (
           <ul className="list-stack">
             {order.shipments?.map((shipment) => {
               const customs = firstCustoms(shipment.customs);
