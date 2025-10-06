@@ -1,6 +1,7 @@
 // apps/web/app/page.tsx
 import { api, API_BASE, type ApiRfq } from "@/lib/api";
 import NewRfqForm from "./components/NewRfqForm";
+import HeroCtaButtons from "./components/HeroCtaButtons";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,7 @@ export default async function Home() {
             Monitor every request-for-quote, engage trusted partners, and move from sourcing to awarding with total confidence.
           </p>
           <div className="cta-row">
-            <a className="button-primary" href="#create-rfq">Start a New RFQ</a>
+            <HeroCtaButtons />
             <a className="button-secondary" href={`${API_BASE}/health`} target="_blank" rel="noreferrer">
               API Health Endpoint
             </a>
