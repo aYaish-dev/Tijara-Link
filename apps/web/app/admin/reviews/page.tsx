@@ -1,8 +1,13 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
-import { api, ApiOrder, SupplierReviewsPayload } from "@/lib/api";
+import { useRequireRole } from "../../hooks/useRequireRole";
+import { api, type ApiReview, type SupplierReviewsPayload } from "@/lib/api";
 
-export const dynamic = "force-dynamic";
+type ReviewRow = { supplierId: string; review: ApiReview };
+type ReviewSummary = { supplierId: string; avg: number; count: number };
 
 function formatDate(value?: string | null) {
   if (!value) return "—";
@@ -15,52 +20,98 @@ function formatDate(value?: string | null) {
   }).format(date);
 }
 
-export default async function AdminReviewsPage() {
-  let orders: ApiOrder[] = [];
-  let error: string | null = null;
+export default function AdminReviewsPage() {
+  const { canRender, isHydrated } = useRequireRole("admin", { redirectTo: "/admin/reviews" });
+  const [summaries, setSummaries] = useState<ReviewSummary[]>([]);
+  const [rows, setRows] = useState<ReviewRow[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setLoading] = useState(true);
 
-  try {
-    orders = await api.listOrders();
-  } catch (err) {
-    console.error("Failed to list orders for reviews", err);
-    error = (err as Error)?.message || "Unable to load reviews";
-  }
+  useEffect(() => {
+    if (!canRender) return;
+    let cancelled = false;
 
-  const supplierIds = Array.from(
-    new Set(
-      orders.map((order) => order.supplierId).filter((value): value is string => Boolean(value))
-    )
-  );
+    async function load() {
+      setLoading(true);
+      setError(null);
 
-  const supplierPayloads: Array<({ supplierId: string } & SupplierReviewsPayload) | null> = await Promise.all(
-    supplierIds.map(async (supplierId) => {
       try {
-        const { reviews, avg } = await api.listSupplierReviews(supplierId);
-        return { supplierId, reviews, avg };
+        const orders = await api.listOrders();
+        if (cancelled) return;
+
+        const supplierIds = Array.from(
+          new Set(orders.map((order) => order.supplierId).filter((value): value is string => Boolean(value))),
+        );
+
+        const payloads: Array<({ supplierId: string } & SupplierReviewsPayload) | null> = await Promise.all(
+          supplierIds.map(async (supplierId) => {
+            try {
+              const { reviews, avg } = await api.listSupplierReviews(supplierId);
+              return { supplierId, reviews, avg };
+            } catch (err) {
+              console.error("Failed to list reviews for supplier", supplierId, err);
+              return null;
+            }
+          }),
+        );
+
+        if (cancelled) return;
+
+        const validPayloads = payloads.filter(
+          (entry): entry is { supplierId: string } & SupplierReviewsPayload => Boolean(entry),
+        );
+
+        const summaryData = validPayloads
+          .map((entry) => ({ supplierId: entry.supplierId, avg: entry.avg, count: entry.reviews.length }))
+          .sort((a, b) => b.avg - a.avg);
+
+        const reviewRows = validPayloads
+          .flatMap((entry) => entry.reviews.map((review) => ({ supplierId: entry.supplierId, review })))
+          .sort((a, b) => {
+            const aDate = a.review.createdAt ? new Date(a.review.createdAt).getTime() : 0;
+            const bDate = b.review.createdAt ? new Date(b.review.createdAt).getTime() : 0;
+            return bDate - aDate;
+          });
+
+        setSummaries(summaryData);
+        setRows(reviewRows);
       } catch (err) {
-        console.error("Failed to list reviews for supplier", supplierId, err);
-        return null;
+        console.error("Failed to load reviews", err);
+        if (!cancelled) {
+          setSummaries([]);
+          setRows([]);
+          setError((err as Error)?.message || "Unable to load reviews");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    })
-  );
+    }
 
-  const summaries = supplierPayloads
-    .filter((entry): entry is { supplierId: string } & SupplierReviewsPayload => Boolean(entry))
-    .map((entry) => ({
-      supplierId: entry.supplierId,
-      avg: entry.avg,
-      count: entry.reviews.length,
-    }))
-    .sort((a, b) => b.avg - a.avg);
+    load();
 
-  const rows = supplierPayloads
-    .filter((entry): entry is { supplierId: string } & SupplierReviewsPayload => Boolean(entry))
-    .flatMap((entry) => entry.reviews.map((review) => ({ supplierId: entry.supplierId, review })))
-    .sort((a, b) => {
-      const aDate = a.review.createdAt ? new Date(a.review.createdAt).getTime() : 0;
-      const bDate = b.review.createdAt ? new Date(b.review.createdAt).getTime() : 0;
-      return bDate - aDate;
-    });
+    return () => {
+      cancelled = true;
+    };
+  }, [canRender]);
+
+  if (!isHydrated || !canRender) {
+    return (
+      <main className="detail-page">
+        <header className="detail-header">
+          <div>
+            <p className="eyebrow">Reputation management</p>
+            <h1>Reviews</h1>
+          </div>
+        </header>
+        <section className="card">
+          <h2>Verifying access…</h2>
+          <p>Please wait while we confirm your permissions.</p>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="detail-page">
@@ -84,7 +135,12 @@ export default async function AdminReviewsPage() {
           </div>
         </div>
 
-        {summaries.length ? (
+        {isLoading ? (
+          <div className="empty-state">
+            <h3>Loading averages…</h3>
+            <p>Aggregating submitted buyer feedback.</p>
+          </div>
+        ) : summaries.length ? (
           <ul className="list-grid">
             {summaries.map((summary) => (
               <li key={summary.supplierId} className="scorecard">
@@ -113,7 +169,12 @@ export default async function AdminReviewsPage() {
           <span className="badge-inline">{rows.length} reviews</span>
         </div>
 
-        {rows.length ? (
+        {isLoading ? (
+          <div className="empty-state">
+            <h3>Loading reviews…</h3>
+            <p>Gathering submitted feedback.</p>
+          </div>
+        ) : rows.length ? (
           <div className="table-wrapper">
             <table className="rfq-table">
               <thead>
@@ -130,7 +191,7 @@ export default async function AdminReviewsPage() {
                   <tr key={`${row.supplierId}-${row.review.orderId}-${index}`}>
                     <td className="mono">{row.supplierId}</td>
                     <td>{row.review.rating}</td>
-                    <td>{row.review.text || "—"}</td>
+                    <td>{row.review.text || row.review.comment || "—"}</td>
                     <td>
                       <Link className="link-muted" href={`/orders/${row.review.orderId || ""}`}>
                         {row.review.orderId || "—"}
@@ -152,3 +213,4 @@ export default async function AdminReviewsPage() {
     </main>
   );
 }
+

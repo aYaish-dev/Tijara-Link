@@ -20,15 +20,26 @@ export default function HeroCtaButtons() {
   }
 
   if (session) {
-    const dashboardHref = session.role === "seller" ? "/seller/dashboard" : "/buyer/dashboard";
+    const dashboardHref =
+      session.role === "seller"
+        ? "/seller/dashboard"
+        : session.role === "admin"
+          ? "/admin"
+          : "/buyer/dashboard";
     return (
       <>
         <Link className="button-primary" href={dashboardHref}>
           View Dashboard
         </Link>
-        <a className="button-secondary" href="#create-rfq">
-          Start a New RFQ
-        </a>
+        {session.role === "admin" ? (
+          <Link className="button-secondary" href="/admin/orders">
+            Review operations
+          </Link>
+        ) : (
+          <a className="button-secondary" href="#create-rfq">
+            Start a New RFQ
+          </a>
+        )}
       </>
     );
   }

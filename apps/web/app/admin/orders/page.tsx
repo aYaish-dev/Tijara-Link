@@ -1,9 +1,11 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
-import { api, ApiOrder } from "@/lib/api";
+import { useRequireRole } from "../../hooks/useRequireRole";
+import { api, type ApiOrder } from "@/lib/api";
 import ReleaseEscrowButton from "@/app/components/ReleaseEscrowButton";
-
-export const dynamic = "force-dynamic";
 
 function formatCurrency(totalMinor?: number, currency?: string | null) {
   if (totalMinor == null) return "—";
@@ -11,15 +13,59 @@ function formatCurrency(totalMinor?: number, currency?: string | null) {
   return `${currency || "USD"} ${amount.toFixed(2)}`;
 }
 
-export default async function AdminOrdersPage() {
-  let orders: ApiOrder[] = [];
-  let error: string | null = null;
+export default function AdminOrdersPage() {
+  const { canRender, isHydrated } = useRequireRole("admin", { redirectTo: "/admin/orders" });
+  const [orders, setOrders] = useState<ApiOrder[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setLoading] = useState(true);
 
-  try {
-    orders = await api.listOrders();
-  } catch (err) {
-    console.error("Failed to list orders", err);
-    error = (err as Error)?.message || "Unable to load orders";
+  useEffect(() => {
+    if (!canRender) return;
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await api.listOrders();
+        if (!cancelled) {
+          setOrders(response);
+        }
+      } catch (err) {
+        console.error("Failed to list orders", err);
+        if (!cancelled) {
+          setOrders([]);
+          setError((err as Error)?.message || "Unable to load orders");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canRender]);
+
+  if (!isHydrated || !canRender) {
+    return (
+      <main className="detail-page">
+        <header className="detail-header">
+          <div>
+            <p className="eyebrow">Order operations</p>
+            <h1>Orders</h1>
+          </div>
+        </header>
+        <section className="card">
+          <h2>Verifying access…</h2>
+          <p>Please wait while we confirm your permissions.</p>
+        </section>
+      </main>
+    );
   }
 
   return (
@@ -45,7 +91,12 @@ export default async function AdminOrdersPage() {
           <span className="badge-inline">{orders.length} orders</span>
         </div>
 
-        {orders.length ? (
+        {isLoading ? (
+          <div className="empty-state">
+            <h3>Loading orders…</h3>
+            <p>Pulling the latest transactions from the ledger.</p>
+          </div>
+        ) : orders.length ? (
           <div className="table-wrapper">
             <table className="rfq-table">
               <thead>
@@ -109,3 +160,4 @@ export default async function AdminOrdersPage() {
     </main>
   );
 }
+

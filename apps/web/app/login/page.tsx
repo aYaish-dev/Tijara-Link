@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 
 import { useAuth, type UserRole } from "../providers/AuthProvider";
 
@@ -19,9 +19,26 @@ const ROLE_OPTIONS: Array<{ value: UserRole; title: string; description: string;
     description: "Suppliers responding to new opportunities.",
     emoji: "🏭",
   },
+  {
+    value: "admin",
+    title: "Admin",
+    description: "Oversee marketplace operations and compliance.",
+    emoji: "🛡️",
+  },
 ];
 
-export default function LoginPage() {
+function getDashboardForRole(role: UserRole) {
+  switch (role) {
+    case "seller":
+      return "/seller/dashboard";
+    case "admin":
+      return "/admin";
+    default:
+      return "/buyer/dashboard";
+  }
+}
+
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { session, login, isHydrated } = useAuth();
@@ -35,7 +52,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     const roleParam = searchParams.get("role");
-    if (roleParam === "buyer" || roleParam === "seller") {
+    if (roleParam === "buyer" || roleParam === "seller" || roleParam === "admin") {
       setRole(roleParam);
     }
   }, [searchParams]);
@@ -43,7 +60,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (!isHydrated) return;
     if (session) {
-      const dashboard = session.role === "seller" ? "/seller/dashboard" : "/buyer/dashboard";
+      const dashboard = getDashboardForRole(session.role);
       router.replace(dashboard);
     }
   }, [isHydrated, router, session]);
@@ -64,7 +81,7 @@ export default function LoginPage() {
     try {
       const authSession = await login({ email, password, remember });
       const redirect = searchParams.get("redirect");
-      const nextDestination = redirect ?? (authSession.role === "seller" ? "/seller/dashboard" : "/buyer/dashboard");
+      const nextDestination = redirect ?? getDashboardForRole(authSession.role);
       router.push(nextDestination);
     } catch (error) {
       console.error("Login failed", error);
@@ -162,5 +179,22 @@ export default function LoginPage() {
         </p>
       </section>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="page auth-page">
+          <section className="card auth-card">
+            <h1 className="auth-card__title">Loading sign-in…</h1>
+            <p className="auth-card__subtitle">Preparing your secure login experience.</p>
+          </section>
+        </main>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

@@ -1,8 +1,12 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
-import { api, ApiOrder, ApiQuote, ApiRfq, ApiShipment } from "@/lib/api";
+import { useRequireRole } from "../hooks/useRequireRole";
+import { api, type ApiOrder, type ApiQuote, type ApiRfq, type ApiShipment } from "@/lib/api";
 
-export const dynamic = "force-dynamic";
+type QuotesMap = Record<string, ApiQuote[]>;
 
 function formatDate(input?: string | null) {
   if (!input) return "—";
@@ -32,93 +36,185 @@ function describeShipments(shipments: ApiShipment[]) {
   return { atCustoms, delivered };
 }
 
-function collectQuotesByRfq(rfqs: ApiRfq[], allQuotes: Record<string, ApiQuote[]>) {
+function collectQuotesByRfq(rfqs: ApiRfq[], allQuotes: QuotesMap) {
   return rfqs.map((rfq) => ({
     rfq,
     quotes: allQuotes[rfq.id] || [],
   }));
 }
 
-export default async function AdminDashboard() {
-  let rfqs: ApiRfq[] = [];
-  let rfqError: string | null = null;
-  let orders: ApiOrder[] = [];
-  let orderError: string | null = null;
-  const quotesMap: Record<string, ApiQuote[]> = {};
+function useAdminData(canRender: boolean) {
+  const [rfqs, setRfqs] = useState<ApiRfq[]>([]);
+  const [orders, setOrders] = useState<ApiOrder[]>([]);
+  const [quotesMap, setQuotesMap] = useState<QuotesMap>({});
+  const [rfqError, setRfqError] = useState<string | null>(null);
+  const [orderError, setOrderError] = useState<string | null>(null);
+  const [isLoading, setLoading] = useState(true);
 
-  try {
-    rfqs = await api.listRfq();
-  } catch (error) {
-    console.error("Failed to load RFQs", error);
-    rfqError = (error as Error)?.message || "Unable to load RFQs";
-  }
+  useEffect(() => {
+    if (!canRender) return;
+    let cancelled = false;
 
-  await Promise.all(
-    rfqs.map(async (rfq) => {
+    async function load() {
+      setLoading(true);
+      setRfqError(null);
+      setOrderError(null);
+
       try {
-        quotesMap[rfq.id] = await api.listQuotesByRfq(rfq.id);
-      } catch (error) {
-        console.error("Failed to load quotes for", rfq.id, error);
-        quotesMap[rfq.id] = [];
-      }
-    })
-  );
-
-  try {
-    orders = await api.listOrders();
-  } catch (error) {
-    console.error("Failed to list orders", error);
-    orderError = (error as Error)?.message || "Unable to load orders";
-    orders = [];
-  }
-
-  const shipments: ApiShipment[] = orders.flatMap((order) => order.shipments);
-
-  const rfqStats = {
-    open: rfqs.filter((rfq) => !/CLOSED/.test(toStatusKey(rfq.status))).length,
-    total: rfqs.length,
-  };
-
-  const quoteStats = Object.values(quotesMap).reduce(
-    (acc, quotes) => {
-      acc.total += quotes.length;
-      acc.accepted += quotes.filter((quote) => /ACCEPTED/.test(toStatusKey(quote.status))).length;
-      return acc;
-    },
-    { total: 0, accepted: 0 }
-  );
-
-  const orderStats = describeOrders(orders);
-  const shipmentStats = describeShipments(shipments);
-
-  const supplierIds = Array.from(
-    new Set(
-      orders.map((order) => order.supplierId).filter((value): value is string => Boolean(value))
-    )
-  );
-
-  let supplierAverages: Array<{ id: string; avg: number; count: number }> = [];
-  if (supplierIds.length) {
-    const responses = await Promise.all(
-      supplierIds.map(async (supplierId) => {
-        try {
-          const { reviews, avg } = await api.listSupplierReviews(supplierId);
-          return { id: supplierId, avg, count: reviews.length };
-        } catch (error) {
-          console.error("Failed to load supplier reviews for", supplierId, error);
-          return null;
+        const rfqResponse = await api.listRfq();
+        if (!cancelled) {
+          setRfqs(rfqResponse);
         }
-      })
+
+        const quotesEntries = await Promise.all(
+          rfqResponse.map(async (rfq) => {
+            try {
+              const quotes = await api.listQuotesByRfq(rfq.id);
+              return [rfq.id, quotes] as const;
+            } catch (error) {
+              console.error("Failed to load quotes for", rfq.id, error);
+              return [rfq.id, []] as const;
+            }
+          }),
+        );
+
+        if (!cancelled) {
+          setQuotesMap(Object.fromEntries(quotesEntries));
+        }
+      } catch (error) {
+        console.error("Failed to load RFQs", error);
+        if (!cancelled) {
+          setRfqError((error as Error)?.message || "Unable to load RFQs");
+          setRfqs([]);
+          setQuotesMap({});
+        }
+      }
+
+      try {
+        const orderResponse = await api.listOrders();
+        if (!cancelled) {
+          setOrders(orderResponse);
+        }
+      } catch (error) {
+        console.error("Failed to list orders", error);
+        if (!cancelled) {
+          setOrderError((error as Error)?.message || "Unable to load orders");
+          setOrders([]);
+        }
+      }
+
+      if (!cancelled) {
+        setLoading(false);
+      }
+    }
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canRender]);
+
+  return { rfqs, orders, quotesMap, rfqError, orderError, isLoading };
+}
+
+export default function AdminDashboard() {
+  const { canRender, isHydrated } = useRequireRole("admin", { redirectTo: "/admin" });
+  const { rfqs, orders, quotesMap, rfqError, orderError, isLoading } = useAdminData(canRender);
+
+  const shipments = useMemo(() => orders.flatMap((order) => order.shipments), [orders]);
+
+  const rfqStats = useMemo(
+    () => ({
+      open: rfqs.filter((rfq) => !/CLOSED/.test(toStatusKey(rfq.status))).length,
+      total: rfqs.length,
+    }),
+    [rfqs],
+  );
+
+  const quoteStats = useMemo(
+    () =>
+      Object.values(quotesMap).reduce(
+        (acc, quotes) => {
+          acc.total += quotes.length;
+          acc.accepted += quotes.filter((quote) => /ACCEPTED/.test(toStatusKey(quote.status))).length;
+          return acc;
+        },
+        { total: 0, accepted: 0 },
+      ),
+    [quotesMap],
+  );
+
+  const orderStats = useMemo(() => describeOrders(orders), [orders]);
+  const shipmentStats = useMemo(() => describeShipments(shipments), [shipments]);
+
+  const supplierAverages = useMemo(() => {
+    const supplierIds = Array.from(
+      new Set(orders.map((order) => order.supplierId).filter((value): value is string => Boolean(value))),
     );
 
-    supplierAverages = responses.filter((entry): entry is { id: string; avg: number; count: number } => Boolean(entry));
-    supplierAverages.sort((a, b) => b.avg - a.avg);
+    return supplierIds;
+  }, [orders]);
+
+  const [topSuppliers, setTopSuppliers] = useState<Array<{ id: string; avg: number; count: number }>>([]);
+
+  useEffect(() => {
+    if (!canRender) return;
+    if (!supplierAverages.length) {
+      setTopSuppliers([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadSupplierReviews() {
+      const responses = await Promise.all(
+        supplierAverages.map(async (supplierId) => {
+          try {
+            const { reviews, avg } = await api.listSupplierReviews(supplierId);
+            return { id: supplierId, avg, count: reviews.length };
+          } catch (error) {
+            console.error("Failed to load supplier reviews for", supplierId, error);
+            return null;
+          }
+        }),
+      );
+
+      if (!cancelled) {
+        const sorted = responses
+          .filter((entry): entry is { id: string; avg: number; count: number } => Boolean(entry))
+          .sort((a, b) => b.avg - a.avg)
+          .slice(0, 5);
+        setTopSuppliers(sorted);
+      }
+    }
+
+    loadSupplierReviews();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canRender, supplierAverages]);
+
+  const rfqRows = useMemo(() => collectQuotesByRfq(rfqs.slice(0, 6), quotesMap), [quotesMap, rfqs]);
+  const latestShipments = useMemo(() => shipments.slice(0, 5), [shipments]);
+
+  if (!isHydrated || !canRender) {
+    return (
+      <main className="detail-page">
+        <header className="detail-header">
+          <div>
+            <p className="eyebrow">Operations control</p>
+            <h1>Admin overview</h1>
+          </div>
+        </header>
+        <section className="card">
+          <h2>Verifying access…</h2>
+          <p>Please wait while we confirm your permissions.</p>
+        </section>
+      </main>
+    );
   }
-
-  const topSuppliers = supplierAverages.slice(0, 5);
-
-  const rfqRows = collectQuotesByRfq(rfqs.slice(0, 6), quotesMap);
-  const latestShipments = shipments.slice(0, 5);
 
   return (
     <main className="detail-page">
@@ -181,7 +277,12 @@ export default async function AdminDashboard() {
             </Link>
           </div>
 
-          {rfqRows.length ? (
+          {isLoading ? (
+            <div className="empty-state">
+              <h3>Loading RFQs…</h3>
+              <p>Fetching the latest demand signals.</p>
+            </div>
+          ) : rfqRows.length ? (
             <div className="table-wrapper">
               <table className="rfq-table">
                 <thead>
@@ -199,14 +300,14 @@ export default async function AdminDashboard() {
                     return (
                       <tr key={rfq.id}>
                         <td>{rfq.title}</td>
-                        <td>{rfq.status || "OPEN"}</td>
+                        <td>{rfq.status || "Pending"}</td>
                         <td>
                           {acceptedQuotes}/{quotes.length}
                         </td>
                         <td>{formatDate(rfq.createdAt)}</td>
                         <td>
                           <Link className="link-muted" href={`/rfq/${rfq.id}`}>
-                            Manage RFQ
+                            View quotes
                           </Link>
                         </td>
                       </tr>
@@ -217,8 +318,8 @@ export default async function AdminDashboard() {
             </div>
           ) : (
             <div className="empty-state">
-              <h3>No RFQs recorded</h3>
-              <p>Publish a new request from the buyer workspace to populate this view.</p>
+              <h3>No RFQs registered yet</h3>
+              <p>Publish a request from the landing page to begin receiving supplier responses.</p>
             </div>
           )}
         </div>
@@ -226,105 +327,113 @@ export default async function AdminDashboard() {
         <aside className="card card--compact">
           <div className="section-heading">
             <div>
-              <h2>Top suppliers</h2>
-              <p className="section-subtitle">Aggregated review scores (last {topSuppliers.length} suppliers).</p>
+              <h2>Top-rated suppliers</h2>
+              <p className="section-subtitle">Average ratings from verified buyer reviews.</p>
             </div>
-            <Link className="link-muted" href="/admin/reviews">
-              Open reviews ↗
-            </Link>
           </div>
 
-          {topSuppliers.length ? (
-            <ul className="list-stack">
+          {isLoading ? (
+            <div className="empty-state">
+              <h3>Loading insights…</h3>
+              <p>Crunching sentiment from recent orders.</p>
+            </div>
+          ) : topSuppliers.length ? (
+            <ul className="dashboard-list">
               {topSuppliers.map((supplier) => (
-                <li key={supplier.id} className="scorecard">
-                  <div>
-                    <p className="eyebrow">{supplier.id}</p>
-                    <p className="scorecard__value">{supplier.avg.toFixed(2)}</p>
-                  </div>
-                  <span className="scorecard__meta">{supplier.count} reviews</span>
+                <li key={supplier.id}>
+                  <span className="dashboard-link">
+                    <span className="mono">{supplier.avg.toFixed(1)}</span> /5 · {supplier.count} reviews
+                  </span>
                 </li>
               ))}
             </ul>
           ) : (
             <div className="empty-state">
-              <h3>No supplier feedback yet</h3>
-              <p>Collect buyer reviews once deliveries are completed.</p>
+              <h3>No reviews yet</h3>
+              <p>Reviews will appear once buyers share feedback.</p>
             </div>
           )}
         </aside>
       </section>
 
-      <section className="card">
-        <div className="section-heading">
-          <div>
-            <h2>Logistics pulse</h2>
-            <p className="section-subtitle">Snapshot of in-flight shipments across all orders.</p>
+      <section className="layout-grid">
+        <div className="card card--compact">
+          <div className="section-heading">
+            <div>
+              <h2>Latest shipments</h2>
+              <p className="section-subtitle">Track how logistics teams are progressing.</p>
+            </div>
+            <Link className="link-muted" href="/admin/shipments">
+              Manage shipments ↗
+            </Link>
           </div>
-          <Link className="link-muted" href="/admin/shipments">
-            Manage shipments ↗
-          </Link>
+
+          {isLoading ? (
+            <div className="empty-state">
+              <h3>Loading shipments…</h3>
+              <p>Checking the manifest for in-flight deliveries.</p>
+            </div>
+          ) : latestShipments.length ? (
+            <div className="table-wrapper">
+              <table className="rfq-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Status</th>
+                    <th>Mode</th>
+                    <th>Tracking</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {latestShipments.map((shipment) => (
+                    <tr key={shipment.id}>
+                      <td className="mono">{shipment.id}</td>
+                      <td>{shipment.status || "BOOKED"}</td>
+                      <td>{shipment.mode || "—"}</td>
+                      <td>{shipment.tracking || "—"}</td>
+                      <td>
+                        <Link className="link-muted" href={`/orders/${shipment.orderId}`}>
+                          View order
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="empty-state">
+              <h3>No shipments on file</h3>
+              <p>Create orders to begin monitoring logistics.</p>
+            </div>
+          )}
         </div>
 
-        {latestShipments.length ? (
-          <ul className="list-grid">
-            {latestShipments.map((shipment) => {
-              const orderHref = shipment.orderId ? `/orders/${shipment.orderId}` : "/orders";
-              return (
-                <li key={shipment.id} className="card quote-card">
-                  <div className="quote-card__header">
-                    <span className="quote-card__price">{shipment.mode || "–"}</span>
-                    <span className="status-pill status-pill--draft">{shipment.status || "BOOKED"}</span>
-                  </div>
-                  <dl className="quote-meta">
-                    <div>
-                      <dt>Order</dt>
-                      <dd className="mono">{shipment.orderId || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>Tracking</dt>
-                      <dd>{shipment.tracking || "—"}</dd>
-                    </div>
-                  </dl>
-                  <div className="quote-card__footer">
-                    <Link className="link-muted" href={orderHref}>
-                      View order
-                    </Link>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <div className="empty-state">
-            <h3>No shipments scheduled</h3>
-            <p>Create shipments from any order to monitor logistics milestones.</p>
+        <aside className="card card--compact">
+          <div className="section-heading">
+            <div>
+              <h2>Quick links</h2>
+              <p className="section-subtitle">Jump straight into detailed administrative views.</p>
+            </div>
           </div>
-        )}
-      </section>
-
-      <section className="card card--compact">
-        <div className="section-heading">
-          <div>
-            <h2>Quick links</h2>
-            <p className="section-subtitle">Jump straight into detailed administrative views.</p>
+          <div className="quick-links-grid">
+            <Link href="/admin/rfq" className="quick-link">
+              RFQs overview ↗
+            </Link>
+            <Link href="/admin/orders" className="quick-link">
+              Orders & escrow ↗
+            </Link>
+            <Link href="/admin/shipments" className="quick-link">
+              Logistics tracker ↗
+            </Link>
+            <Link href="/admin/reviews" className="quick-link">
+              Reviews moderation ↗
+            </Link>
           </div>
-        </div>
-        <div className="quick-links__items">
-          <Link href="/admin/rfq" className="quick-link">
-            RFQ management
-          </Link>
-          <Link href="/admin/orders" className="quick-link">
-            Orders board
-          </Link>
-          <Link href="/admin/shipments" className="quick-link">
-            Shipments console
-          </Link>
-          <Link href="/admin/reviews" className="quick-link">
-            Supplier reviews
-          </Link>
-        </div>
+        </aside>
       </section>
     </main>
   );
 }
+

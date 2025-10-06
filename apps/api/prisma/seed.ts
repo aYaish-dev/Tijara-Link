@@ -42,6 +42,19 @@ async function main() {
     },
   });
 
+  await prisma.user.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000099' },
+    update: { password: demoPassword },
+    create: {
+      id: '00000000-0000-0000-0000-000000000099',
+      companyId: buyer.id,
+      email: 'admin@demo.ps',
+      fullName: 'Admin One',
+      role: 'ADMIN',
+      password: demoPassword,
+    },
+  });
+
   await prisma.product.createMany({
     data: [
       { companyId: supplier.id, nameI18n: { en: 'Cement (50kg)', ar: 'أسمنت (50كج)', tr: 'Çimento (50kg)' }, hsCode: '2523.29', unit: 'bag' },

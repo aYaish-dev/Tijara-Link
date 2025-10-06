@@ -18,7 +18,7 @@ export default function SiteHeader() {
     router.push("/");
   };
 
-  const dashboardHref = session?.role === "seller" ? "/seller/dashboard" : "/buyer/dashboard";
+  const dashboardHref = session?.role === "seller" ? "/seller/dashboard" : session?.role === "admin" ? "/admin" : "/buyer/dashboard";
 
   return (
     <header className="site-header">
