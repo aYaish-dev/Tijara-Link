@@ -33,7 +33,7 @@ export default async function AdminShipmentsPage() {
     error = (err as Error)?.message || "Unable to load shipments";
   }
 
-  const shipments: ApiShipment[] = orders.flatMap((order) => order.shipments || []);
+  const shipments: ApiShipment[] = orders.flatMap((order) => order.shipments);
 
   return (
     <main className="detail-page">

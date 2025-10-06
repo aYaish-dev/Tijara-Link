@@ -75,7 +75,7 @@ export type ApiShipment = {
   mode?: string | null;
   tracking?: string | null;
   status?: string | null;
-  customs?: ApiCustoms | null;
+  customs: ApiCustoms | null;
 };
 
 export type ApiContract = {
@@ -102,12 +102,12 @@ export type ApiOrder = {
   totalMinor?: number;
   totalCurrency?: string | null;
   createdAt?: string;
-  buyerId?: string | null;
-  supplierId?: string | null;
+  buyerId: string | null;
+  supplierId: string | null;
   escrow?: ApiEscrow | null;
-  shipments?: ApiShipment[];
+  shipments: ApiShipment[];
   contract?: ApiContract | null;
-  review?: ApiReview | null;
+  review: ApiReview | null;
 };
 
 async function request<T>(input: RequestInfo, init?: RequestInit) {

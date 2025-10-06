@@ -62,7 +62,7 @@ export default async function AdminOrdersPage() {
               </thead>
               <tbody>
                 {orders.map((order) => {
-                  const shipmentsCount = order.shipments?.length ?? 0;
+                  const shipmentsCount = order.shipments.length;
                   const contractState = order.contract
                     ? order.contract.buyerSignedAt && order.contract.supplierSignedAt
                       ? "Signed"

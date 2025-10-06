@@ -13,15 +13,18 @@ export class OrdersController {
   @Get(':id')
   async get(@Param() params: IdParamDto) {
     const { id } = params;
-    return this.prisma.order.findUnique({
+    const order = await this.prisma.order.findUnique({
       where: { id },
       include: {
         escrow: true,
-        shipments: true,
+        shipments: { include: { customs: true } },
         items: true,
         contract: true,
+        reviews: true,
       },
     });
+
+    return this.mapOrder(order);
   }
 
   // POST /orders  → إنشاء طلب من Quote
@@ -94,10 +97,16 @@ export class OrdersController {
       // رجّع الطلب مع العلاقات
       const full = await this.prisma.order.findUnique({
         where: { id: order.id },
-        include: { escrow: true, shipments: true, items: true, contract: true },
+        include: {
+          escrow: true,
+          shipments: { include: { customs: true } },
+          items: true,
+          contract: true,
+          reviews: true,
+        },
       });
 
-      return full;
+      return this.mapOrder(full);
     } catch (e: any) {
       console.error('ORDER CREATE ERROR:', e?.message, e?.stack);
       return { error: true, message: e?.message || 'create order failed' };
@@ -126,5 +135,24 @@ export class OrdersController {
       console.error('ESCROW RELEASE ERROR:', e?.message, e?.stack);
       return { error: true, message: e?.message || 'escrow release failed' };
     }
+  }
+
+  private mapOrder(order: any) {
+    if (!order) return order;
+
+    const { buyerCompanyId, supplierCompanyId, shipments, reviews, ...rest } = order;
+
+    return {
+      ...rest,
+      buyerId: buyerCompanyId,
+      supplierId: supplierCompanyId,
+      shipments: Array.isArray(shipments)
+        ? shipments.map((shipment) => ({
+            ...shipment,
+            customs: shipment?.customs ?? null,
+          }))
+        : [],
+      review: Array.isArray(reviews) ? reviews[0] ?? null : null,
+    };
   }
 }

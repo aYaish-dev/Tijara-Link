@@ -28,9 +28,7 @@ export default async function AdminReviewsPage() {
 
   const supplierIds = Array.from(
     new Set(
-      orders
-        .map((order) => order.supplierCompanyId || order.supplierId)
-        .filter((value): value is string => Boolean(value))
+      orders.map((order) => order.supplierId).filter((value): value is string => Boolean(value))
     )
   );
 
