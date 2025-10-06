@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { api, ApiOrder, ApiReview, SupplierReviewsPayload } from "@/lib/api";
+import { api, ApiOrder, SupplierReviewsPayload } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -34,11 +34,11 @@ export default async function AdminReviewsPage() {
     )
   );
 
-  const supplierPayloads = await Promise.all(
+  const supplierPayloads: Array<({ supplierId: string } & SupplierReviewsPayload) | null> = await Promise.all(
     supplierIds.map(async (supplierId) => {
       try {
-        const payload: SupplierReviewsPayload = await api.listSupplierReviews(supplierId);
-        return { supplierId, payload };
+        const { reviews, avg } = await api.listSupplierReviews(supplierId);
+        return { supplierId, reviews, avg };
       } catch (err) {
         console.error("Failed to list reviews for supplier", supplierId, err);
         return null;
@@ -47,22 +47,17 @@ export default async function AdminReviewsPage() {
   );
 
   const summaries = supplierPayloads
-    .filter((entry): entry is { supplierId: string; payload: SupplierReviewsPayload } => Boolean(entry))
+    .filter((entry): entry is { supplierId: string } & SupplierReviewsPayload => Boolean(entry))
     .map((entry) => ({
       supplierId: entry.supplierId,
-      avg: entry.payload.avg,
-      count: entry.payload.reviews.length,
+      avg: entry.avg,
+      count: entry.reviews.length,
     }))
     .sort((a, b) => b.avg - a.avg);
 
   const rows = supplierPayloads
-    .filter((entry): entry is { supplierId: string; payload: SupplierReviewsPayload } => Boolean(entry))
-    .flatMap((entry) =>
-      entry.payload.reviews.map((review: ApiReview) => ({
-        supplierId: entry.supplierId,
-        review,
-      }))
-    )
+    .filter((entry): entry is { supplierId: string } & SupplierReviewsPayload => Boolean(entry))
+    .flatMap((entry) => entry.reviews.map((review) => ({ supplierId: entry.supplierId, review })))
     .sort((a, b) => {
       const aDate = a.review.createdAt ? new Date(a.review.createdAt).getTime() : 0;
       const bDate = b.review.createdAt ? new Date(b.review.createdAt).getTime() : 0;

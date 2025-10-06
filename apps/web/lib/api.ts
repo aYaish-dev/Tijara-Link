@@ -96,6 +96,11 @@ export type ApiReview = {
   createdAt?: string;
 };
 
+export type SupplierReviewsPayload = {
+  reviews: ApiReview[];
+  avg: number;
+};
+
 export type ApiOrder = {
   id: string;
   status?: string | null;
@@ -237,7 +242,7 @@ export const api = {
   },
 
   async listSupplierReviews(companyId: string) {
-    return request<ApiReview[]>(`${API_BASE}/suppliers/${companyId}/reviews`, {
+    return request<SupplierReviewsPayload>(`${API_BASE}/suppliers/${companyId}/reviews`, {
       cache: "no-store",
     });
   },
