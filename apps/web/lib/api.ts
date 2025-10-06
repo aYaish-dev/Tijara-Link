@@ -118,11 +118,6 @@ export type ApiReview = {
   createdAt?: string;
 };
 
-export type SupplierReviewsPayload = {
-  reviews: ApiReview[];
-  avg: number;
-};
-
 export type ApiOrder = {
   id: string;
   status?: string | null;

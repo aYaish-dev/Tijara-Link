@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 
 export default function NewRfqForm() {
@@ -34,54 +38,39 @@ export default function NewRfqForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="form">
-      <div className="form__field-group">
-        <div className="form__field">
-          <label className="form__label" htmlFor="rfq-title">
-            Project title
-          </label>
-          <input
+    <form onSubmit={onSubmit} className="space-y-6">
+      <div className="grid gap-5">
+        <div className="space-y-2">
+          <Label htmlFor="rfq-title">Project title</Label>
+          <Input
             id="rfq-title"
             name="title"
             placeholder="Example: Logistics support for Q3 expansion"
-            className="input"
             required
             disabled={loading}
           />
         </div>
-        <div className="form__field">
-          <label className="form__label" htmlFor="rfq-details">
-            Overview
-          </label>
-          <textarea
+        <div className="space-y-2">
+          <Label htmlFor="rfq-details">Overview</Label>
+          <Textarea
             id="rfq-details"
             name="details"
             placeholder="Outline the scope, volumes, or any specifications suppliers should know."
-            className="textarea"
             disabled={loading}
           />
         </div>
-        <div className="form__field">
-          <label className="form__label" htmlFor="rfq-destination">
-            Destination country
-          </label>
-          <input
-            id="rfq-destination"
-            name="dest"
-            placeholder="PS"
-            className="input"
-            defaultValue="PS"
-            disabled={loading}
-          />
+        <div className="space-y-2">
+          <Label htmlFor="rfq-destination">Destination country</Label>
+          <Input id="rfq-destination" name="dest" placeholder="PS" defaultValue="PS" disabled={loading} />
         </div>
       </div>
-      <div className="form__footer">
-        <button type="submit" disabled={loading} className="button-primary">
+      <div className="flex flex-wrap items-center gap-4 sm:justify-between">
+        <Button type="submit" disabled={loading} className="min-w-[180px]">
           {loading ? "Publishing..." : "Publish RFQ"}
-        </button>
-        <span className="form__hint">
+        </Button>
+        <p className="text-xs text-muted-foreground sm:text-sm">
           Buyers are notified instantly. You can edit RFQ details anytime.
-        </span>
+        </p>
       </div>
     </form>
   );
