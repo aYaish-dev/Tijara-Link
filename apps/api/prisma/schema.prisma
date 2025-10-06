@@ -195,6 +195,7 @@ enum ShipmentMode {
   AIR
   SEA
   ROAD
+  RAIL
 }
 
 enum ShipmentStatus {
