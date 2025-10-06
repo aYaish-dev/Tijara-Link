@@ -1,4 +1,5 @@
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { hash } from 'argon2';
 const prisma = new PrismaClient();
 
 async function main() {
@@ -13,12 +14,32 @@ async function main() {
     create: { id: '00000000-0000-0000-0000-000000000002', legalName: 'TR Supplier Ltd.', countryCode: 'TR' }
   });
 
-  await prisma.user.createMany({
-    data: [
-      { id: '00000000-0000-0000-0000-000000000011', companyId: buyer.id, email: 'buyer@demo.ps', fullName: 'Buyer One', role: 'BUYER', password: 'x' },
-      { id: '00000000-0000-0000-0000-000000000012', companyId: supplier.id, email: 'supplier@demo.tr', fullName: 'Supplier One', role: 'SUPPLIER', password: 'x' }
-    ],
-    skipDuplicates: true
+  const demoPassword = await hash('x');
+
+  await prisma.user.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000011' },
+    update: { password: demoPassword },
+    create: {
+      id: '00000000-0000-0000-0000-000000000011',
+      companyId: buyer.id,
+      email: 'buyer@demo.ps',
+      fullName: 'Buyer One',
+      role: 'BUYER',
+      password: demoPassword,
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000012' },
+    update: { password: demoPassword },
+    create: {
+      id: '00000000-0000-0000-0000-000000000012',
+      companyId: supplier.id,
+      email: 'supplier@demo.tr',
+      fullName: 'Supplier One',
+      role: 'SUPPLIER',
+      password: demoPassword,
+    },
   });
 
   await prisma.product.createMany({
