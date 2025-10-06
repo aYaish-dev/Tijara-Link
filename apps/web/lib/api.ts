@@ -133,6 +133,7 @@ export type ApiOrder = {
   buyerCompanyId?: string | null;
   supplierId?: string | null;
   supplierCompanyId?: string | null;
+  quoteId?: string | null;
   escrow?: ApiEscrow | null;
   shipments: ApiShipment[];
   contract?: ApiContract | null;
