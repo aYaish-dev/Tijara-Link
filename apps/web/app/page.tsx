@@ -62,13 +62,13 @@ export default async function Home() {
                 <p className="mt-2 text-sm text-slate-300">Access verified suppliers and orchestrate compliant sourcing.</p>
                 <div className="mt-4 flex flex-wrap gap-3">
                   <Link
-                    href="/buyers/login"
+                    href="/login?role=buyer"
                     className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400"
                   >
                     Buyer Login
                   </Link>
                   <Link
-                    href="/buyers/register"
+                    href="/register?role=buyer"
                     className="inline-flex items-center justify-center rounded-full border border-emerald-400/60 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:border-emerald-300 hover:text-emerald-100"
                   >
                     Create Buyer Account
@@ -81,13 +81,13 @@ export default async function Home() {
                 <p className="mt-2 text-sm text-slate-300">Showcase capabilities and secure recurring export demand.</p>
                 <div className="mt-4 flex flex-wrap gap-3">
                   <Link
-                    href="/suppliers/login"
+                    href="/login?role=seller"
                     className="inline-flex items-center justify-center rounded-full bg-amber-400 px-4 py-2 text-sm font-semibold text-amber-950 transition hover:bg-amber-300"
                   >
                     Supplier Login
                   </Link>
                   <Link
-                    href="/suppliers/register"
+                    href="/register?role=seller"
                     className="inline-flex items-center justify-center rounded-full border border-amber-300/60 px-4 py-2 text-sm font-semibold text-amber-200 transition hover:border-amber-200 hover:text-amber-100"
                   >
                     Join as Supplier
