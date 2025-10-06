@@ -128,6 +128,7 @@ export type ApiOrder = {
   buyerCompanyId?: string | null;
   supplierId?: string | null;
   supplierCompanyId?: string | null;
+  quoteId?: string | null;
   escrow?: ApiEscrow | null;
   shipments: ApiShipment[];
   contract?: ApiContract | null;
@@ -169,6 +170,20 @@ export const api = {
   async listQuotesByRfq(rfqId: string): Promise<ApiQuote[]> {
     return request<ApiQuote[]>(`${API_BASE}/quotes/rfq/${rfqId}`, {
       cache: "no-store",
+    });
+  },
+
+  async createQuote(payload: {
+    rfqId: string;
+    currency: string;
+    pricePerUnitMinor: number;
+    moq?: number | null;
+    leadTimeDays?: number | null;
+  }): Promise<ApiQuote> {
+    return request<ApiQuote>(`${API_BASE}/quotes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
   },
 
