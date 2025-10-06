@@ -178,6 +178,20 @@ export const api = {
     });
   },
 
+  async createQuote(payload: {
+    rfqId: string;
+    currency: string;
+    pricePerUnitMinor: number;
+    moq?: number | null;
+    leadTimeDays?: number | null;
+  }): Promise<ApiQuote> {
+    return request<ApiQuote>(`${API_BASE}/quotes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  },
+
   async listOrders(): Promise<ApiOrder[]> {
     return request<ApiOrder[]>(`${API_BASE}/orders`, { cache: "no-store" });
   },
