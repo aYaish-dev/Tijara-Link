@@ -183,7 +183,7 @@ export default async function Home() {
               </ul>
             </div>
           </div>
-        ))}
+        </div>
       </section>
 
       <section className="border-t border-slate-800 bg-slate-950/90 py-20">
