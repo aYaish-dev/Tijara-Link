@@ -39,7 +39,7 @@ function formatDate(value?: string | null) {
 function shipmentStatusBadge(status?: string | null) {
   const normalized = String(status || "pending").toLowerCase();
   if (/(delivered|cleared)/.test(normalized)) return "status-pill status-pill--approved";
-  if (/(customs|hold)/.test(normalized)) return "status-pill status-pill--pending";
+  if (/(customs|hold|rail|road|sea|air)/.test(normalized)) return "status-pill status-pill--pending";
   return "status-pill status-pill--draft";
 }
 
