@@ -139,10 +139,6 @@ export type ApiOrder = {
   review: ApiReview | null;
 };
 
-export type SupplierReviewsPayload = {
-  reviews: ApiReview[];
-  avg: number;
-};
 
 async function request<T>(input: RequestInfo, init?: RequestInit) {
   const response = await fetch(input, init);
