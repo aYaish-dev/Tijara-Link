@@ -3,6 +3,12 @@ export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ||
   "http://localhost:3001";
 
+let authToken: string | null = null;
+
+export function setAuthToken(token: string | null) {
+  authToken = token;
+}
+
 type MaybeWithError<T> = T & { error?: boolean; message?: string };
 
 async function parseJson<T>(res: Response): Promise<T> {
@@ -141,7 +147,12 @@ export type SupplierReviewsPayload = {
 };
 
 async function request<T>(input: RequestInfo, init?: RequestInit) {
-  const response = await fetch(input, init);
+  const headers = new Headers(init?.headers ?? undefined);
+  if (authToken && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const response = await fetch(input, { ...init, headers });
   const data = await parseJson<T | MaybeWithError<T>>(response);
   return ensureNoError(data as MaybeWithError<T>);
 }
@@ -295,6 +306,21 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(credentials),
+    });
+  },
+
+  async register(payload: {
+    email: string;
+    password: string;
+    fullName: string;
+    companyName: string;
+    role: "buyer" | "seller";
+    companyCountryCode?: string;
+  }) {
+    return request<ApiAuthResponse>(`${API_BASE}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
   },
 };

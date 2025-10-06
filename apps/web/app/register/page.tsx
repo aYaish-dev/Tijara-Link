@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import { useAuth, type UserRole } from "../providers/AuthProvider";
 
@@ -24,7 +24,7 @@ const ROLE_OPTIONS: Array<{ value: UserRole; title: string; description: string;
 export default function RegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { session, login, isHydrated } = useAuth();
+  const { session, register, isHydrated } = useAuth();
 
   const [role, setRole] = useState<UserRole>("buyer");
   const [fullName, setFullName] = useState("");
@@ -51,12 +51,7 @@ export default function RegisterPage() {
     }
   }, [isHydrated, router, session]);
 
-  const destination = useMemo(
-    () => (role === "seller" ? "/seller/dashboard" : "/buyer/dashboard"),
-    [role],
-  );
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!fullName.trim()) {
@@ -87,8 +82,23 @@ export default function RegisterPage() {
     setError(null);
     setSubmitting(true);
 
-    login({ role, email, name: fullName, remember });
-    router.push(destination);
+    try {
+      const authSession = await register({
+        role,
+        email,
+        password,
+        fullName,
+        companyName: company,
+        remember,
+      });
+      const redirect = searchParams.get("redirect");
+      const nextDestination = redirect ?? (authSession.role === "seller" ? "/seller/dashboard" : "/buyer/dashboard");
+      router.push(nextDestination);
+    } catch (error) {
+      console.error("Registration failed", error);
+      setError(error instanceof Error ? error.message : "Unable to create account. Please try again.");
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -140,6 +150,7 @@ export default function RegisterPage() {
               value={fullName}
               onChange={(event) => setFullName(event.target.value)}
               placeholder="Amira Khan"
+              autoComplete="name"
               required
             />
           </div>
@@ -155,6 +166,7 @@ export default function RegisterPage() {
               value={company}
               onChange={(event) => setCompany(event.target.value)}
               placeholder="Tijara Group"
+              autoComplete="organization"
               required
             />
           </div>
@@ -170,6 +182,7 @@ export default function RegisterPage() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               placeholder="amira@company.com"
+              autoComplete="email"
               required
             />
           </div>
@@ -185,8 +198,12 @@ export default function RegisterPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Create a secure password"
+              autoComplete="new-password"
               required
             />
+            <small className="auth-form__hint">
+              Use at least 8 characters with a mix of uppercase, lowercase, numbers, and symbols.
+            </small>
           </div>
 
           <div className="auth-form__group">
@@ -200,6 +217,7 @@ export default function RegisterPage() {
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
               placeholder="Re-enter your password"
+              autoComplete="new-password"
               required
             />
           </div>
