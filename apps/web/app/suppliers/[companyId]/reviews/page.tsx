@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { api, ApiReview } from "@/lib/api";
+import { api, ApiReview, SupplierReviewsPayload } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -24,17 +24,19 @@ function averageRating(reviews: ApiReview[]) {
 export default async function SupplierReviewsPage({ params }: { params: { companyId: string } }) {
   const { companyId } = params;
 
+  let payload: SupplierReviewsPayload | null = null;
   let reviews: ApiReview[] = [];
   let error: string | null = null;
 
   try {
-    reviews = await api.listSupplierReviews(companyId);
+    payload = await api.listSupplierReviews(companyId);
+    reviews = payload.reviews;
   } catch (err) {
     console.error("Failed to load supplier reviews", err);
     error = (err as Error)?.message || "Unable to load reviews";
   }
 
-  const average = averageRating(reviews);
+  const average = payload?.avg ?? averageRating(reviews);
 
   return (
     <main className="detail-page">
