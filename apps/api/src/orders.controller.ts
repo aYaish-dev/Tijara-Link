@@ -29,7 +29,7 @@ export class OrdersController {
       },
     });
 
-    return orders.map((order) => {
+    return orders.map((order: any) => {
       const latestReview = order.reviews?.[0] ?? null;
       return {
         id: order.id,
@@ -50,14 +50,14 @@ export class OrdersController {
               createdAt: order.escrow.createdAt?.toISOString?.() ?? order.escrow.createdAt,
             }
           : null,
-        shipments: order.shipments.map((shipment) => ({
+        shipments: order.shipments.map((shipment: any) => ({
           id: shipment.id,
           orderId: shipment.orderId,
           mode: shipment.mode,
           tracking: shipment.tracking,
           status: shipment.status,
           createdAt: shipment.createdAt?.toISOString?.() ?? shipment.createdAt,
-          customs: shipment.customs.map((customs) => ({
+          customs: shipment.customs.map((customs: any) => ({
             id: customs.id,
             shipmentId: customs.shipmentId,
             status: customs.status,

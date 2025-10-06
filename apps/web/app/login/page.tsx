@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import { useAuth, type UserRole } from "../providers/AuthProvider";
 
@@ -40,12 +40,6 @@ export default function LoginPage() {
     }
   }, [searchParams]);
 
-  const destination = useMemo(() => {
-    const redirect = searchParams.get("redirect");
-    if (redirect) return redirect;
-    return role === "seller" ? "/seller/dashboard" : "/buyer/dashboard";
-  }, [role, searchParams]);
-
   useEffect(() => {
     if (!isHydrated) return;
     if (session) {
@@ -54,7 +48,7 @@ export default function LoginPage() {
     }
   }, [isHydrated, router, session]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!email.trim()) {
       setError("Please enter your email address.");
@@ -67,8 +61,16 @@ export default function LoginPage() {
 
     setError(null);
     setSubmitting(true);
-    login({ role, email, remember });
-    router.push(destination);
+    try {
+      const authSession = await login({ email, password, remember });
+      const redirect = searchParams.get("redirect");
+      const nextDestination = redirect ?? (authSession.role === "seller" ? "/seller/dashboard" : "/buyer/dashboard");
+      router.push(nextDestination);
+    } catch (error) {
+      console.error("Login failed", error);
+      setError(error instanceof Error ? error.message : "Unable to sign in. Please try again.");
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -118,6 +120,7 @@ export default function LoginPage() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               placeholder="you@example.com"
+              autoComplete="email"
               required
             />
           </div>
@@ -133,6 +136,7 @@ export default function LoginPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="••••••••"
+              autoComplete="current-password"
               required
             />
           </div>

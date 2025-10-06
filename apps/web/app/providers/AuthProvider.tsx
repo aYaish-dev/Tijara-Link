@@ -2,49 +2,119 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
+import { api, type ApiAuthClaims, type ApiAuthResponse, setAuthToken } from "../../lib/api";
+
 export type UserRole = "buyer" | "seller";
 
 type AuthSession = {
+  token: string;
   role: UserRole;
   email: string;
-  name?: string;
-  createdAt: string;
+  name: string;
+  companyId: string;
+  userId: string;
+  expiresAt: string;
+  authenticatedAt: string;
 };
 
 type LoginPayload = {
-  role: UserRole;
   email: string;
-  name?: string;
+  password: string;
+  remember?: boolean;
+};
+
+type RegisterPayload = {
+  email: string;
+  password: string;
+  fullName: string;
+  companyName: string;
+  role: UserRole;
   remember?: boolean;
 };
 
 type AuthContextValue = {
   session: AuthSession | null;
-  login: (payload: LoginPayload) => void;
+  login: (payload: LoginPayload) => Promise<AuthSession>;
+  register: (payload: RegisterPayload) => Promise<AuthSession>;
   logout: () => void;
   isHydrated: boolean;
+};
+
+type PersistedSession = {
+  token: string;
+  expiresAt: string;
+  claims: ApiAuthClaims;
 };
 
 const SESSION_STORAGE_KEY = "tijara-link.session";
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function readStoredSession(): AuthSession | null {
+function mapApiRole(role: string): UserRole {
+  return role?.toUpperCase() === "SUPPLIER" ? "seller" : "buyer";
+}
+
+function claimsToSession(claims: ApiAuthClaims, token: string, expiresAt: string): AuthSession {
+  return {
+    token,
+    role: mapApiRole(claims.role),
+    email: claims.email,
+    name: claims.fullName || claims.email,
+    companyId: claims.companyId,
+    userId: claims.sub,
+    expiresAt,
+    authenticatedAt: new Date().toISOString(),
+  };
+}
+
+function persistSession(data: PersistedSession, remember: boolean) {
+  const storage = remember ? window.localStorage : window.sessionStorage;
+  const fallback = remember ? window.sessionStorage : window.localStorage;
+
+  storage.setItem(SESSION_STORAGE_KEY, JSON.stringify(data));
+  fallback.removeItem(SESSION_STORAGE_KEY);
+}
+
+function clearPersistedSession() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(SESSION_STORAGE_KEY);
+  window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+}
+
+function readPersistedSession(): PersistedSession | null {
   if (typeof window === "undefined") return null;
 
-  const localValue = window.localStorage.getItem(SESSION_STORAGE_KEY);
-  const sessionValue = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
-  const raw = localValue ?? sessionValue;
+  const raw = window.localStorage.getItem(SESSION_STORAGE_KEY) ??
+    window.sessionStorage.getItem(SESSION_STORAGE_KEY);
   if (!raw) return null;
 
   try {
-    const parsed = JSON.parse(raw) as AuthSession;
-    if (!parsed?.role || !parsed?.email) return null;
+    const parsed = JSON.parse(raw) as PersistedSession;
+    if (!parsed?.token || !parsed?.expiresAt || !parsed?.claims) {
+      return null;
+    }
+
+    const expiresAt = new Date(parsed.expiresAt).getTime();
+    if (Number.isNaN(expiresAt) || expiresAt <= Date.now()) {
+      clearPersistedSession();
+      return null;
+    }
+
     return parsed;
   } catch (error) {
     console.warn("Unable to parse stored session", error);
+    clearPersistedSession();
     return null;
   }
+}
+
+function authResponseToPersisted(response: ApiAuthResponse): PersistedSession {
+  const expiresAt = new Date(Date.now() + response.expiresIn * 1000).toISOString();
+  return {
+    token: response.accessToken,
+    expiresAt,
+    claims: response.claims,
+  };
 }
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -52,39 +122,69 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [isHydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const stored = readStoredSession();
-    if (stored) {
-      setSession(stored);
+    const persisted = readPersistedSession();
+    if (persisted) {
+      setAuthToken(persisted.token);
+      setSession(claimsToSession(persisted.claims, persisted.token, persisted.expiresAt));
     }
     setHydrated(true);
   }, []);
 
-  const login = useCallback((payload: LoginPayload) => {
-    if (typeof window === "undefined") return;
+  const applyAuthResponse = useCallback(
+    (response: ApiAuthResponse, remember = false): AuthSession | null => {
+      if (typeof window === "undefined") return null;
 
-    const { role, email, name, remember } = payload;
-    const normalizedName = name?.trim() || email.split("@")[0] || "User";
-    const nextSession: AuthSession = {
-      role,
-      email,
-      name: normalizedName,
-      createdAt: new Date().toISOString(),
-    };
+      const persisted = authResponseToPersisted(response);
+      const authSession = claimsToSession(persisted.claims, persisted.token, persisted.expiresAt);
+      setAuthToken(persisted.token);
+      persistSession(persisted, remember);
+      setSession(authSession);
+      return authSession;
+    },
+    [],
+  );
 
-    const preferredStorage = remember ? window.localStorage : window.sessionStorage;
-    const secondaryStorage = remember ? window.sessionStorage : window.localStorage;
+  const login = useCallback(
+    async ({ email, password, remember = false }: LoginPayload) => {
+      try {
+        const response = await api.login({ email, password });
+        const authSession = applyAuthResponse(response, remember);
+        if (!authSession) {
+          throw new Error("Unable to sign in. Please try again.");
+        }
+        return authSession;
+      } catch (error) {
+        throw error instanceof Error ? error : new Error("Unable to sign in. Please try again.");
+      }
+    },
+    [applyAuthResponse],
+  );
 
-    preferredStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
-    secondaryStorage.removeItem(SESSION_STORAGE_KEY);
-
-    setSession(nextSession);
-  }, []);
+  const register = useCallback(
+    async ({ email, password, fullName, companyName, role, remember = false }: RegisterPayload) => {
+      try {
+        const response = await api.register({
+          email,
+          password,
+          fullName,
+          companyName,
+          role,
+        });
+        const authSession = applyAuthResponse(response, remember);
+        if (!authSession) {
+          throw new Error("Unable to create account. Please try again.");
+        }
+        return authSession;
+      } catch (error) {
+        throw error instanceof Error ? error : new Error("Unable to create account. Please try again.");
+      }
+    },
+    [applyAuthResponse],
+  );
 
   const logout = useCallback(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(SESSION_STORAGE_KEY);
-      window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
-    }
+    clearPersistedSession();
+    setAuthToken(null);
     setSession(null);
   }, []);
 
@@ -92,10 +192,11 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     () => ({
       session,
       login,
+      register,
       logout,
       isHydrated,
     }),
-    [isHydrated, login, logout, session],
+    [isHydrated, login, logout, register, session],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -108,3 +209,4 @@ export function useAuth() {
   }
   return context;
 }
+
