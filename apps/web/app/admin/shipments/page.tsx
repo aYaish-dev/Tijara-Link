@@ -10,16 +10,13 @@ export const dynamic = "force-dynamic";
 function shipmentStatusBadge(status?: string | null) {
   const normalized = String(status || "BOOKED").toLowerCase();
   if (/(delivered|cleared)/.test(normalized)) return "status-pill status-pill--approved";
-  if (/(customs|hold)/.test(normalized)) return "status-pill status-pill--pending";
+  if (/(customs|hold|rail|road|sea|air)/.test(normalized)) return "status-pill status-pill--pending";
   return "status-pill status-pill--draft";
 }
 
-function normaliseCustoms(customs?: ApiCustoms[] | ApiCustoms | null): ApiCustoms | null {
-  if (!customs) return null;
-  if (Array.isArray(customs)) {
-    return customs[0] ?? null;
-  }
-  return customs;
+function normaliseCustoms(customs?: ApiCustoms[] | null): ApiCustoms | null {
+  if (!customs?.length) return null;
+  return customs[0] ?? null;
 }
 
 export default async function AdminShipmentsPage() {

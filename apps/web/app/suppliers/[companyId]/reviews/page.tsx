@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { api, ApiReview } from "@/lib/api";
+import { api, ApiReview, SupplierReviewsPayload } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -15,26 +15,23 @@ function formatDate(value?: string) {
   }).format(date);
 }
 
-function averageRating(reviews: ApiReview[]) {
-  if (!reviews.length) return 0;
-  const total = reviews.reduce((acc, review) => acc + (review.rating || 0), 0);
-  return total / reviews.length;
-}
-
 export default async function SupplierReviewsPage({ params }: { params: { companyId: string } }) {
   const { companyId } = params;
 
+  let payload: SupplierReviewsPayload | null = null;
   let reviews: ApiReview[] = [];
+  let average = 0;
   let error: string | null = null;
 
   try {
-    reviews = await api.listSupplierReviews(companyId);
+    payload = await api.listSupplierReviews(companyId);
+    reviews = payload.reviews;
   } catch (err) {
     console.error("Failed to load supplier reviews", err);
     error = (err as Error)?.message || "Unable to load reviews";
   }
 
-  const average = averageRating(reviews);
+  const average = payload?.avg ?? averageRating(reviews);
 
   return (
     <main className="detail-page">
@@ -43,7 +40,8 @@ export default async function SupplierReviewsPage({ params }: { params: { compan
           <p className="eyebrow">Supplier performance</p>
           <h1>Reviews for {companyId}</h1>
           <p className="section-subtitle">
-            Average rating {average ? average.toFixed(2) : "–"} from {reviews.length} review{reviews.length === 1 ? "" : "s"}.
+            Average rating {reviews.length ? average.toFixed(2) : "–"} from {reviews.length} review
+            {reviews.length === 1 ? "" : "s"}.
           </p>
         </div>
         <Link className="button-secondary" href="/">

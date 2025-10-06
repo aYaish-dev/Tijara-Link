@@ -1,13 +1,6 @@
 import Link from "next/link";
 
-import {
-  api,
-  ApiOrder,
-  ApiQuote,
-  ApiRfq,
-  ApiShipment,
-  SupplierReviewsPayload,
-} from "@/lib/api";
+import { api, ApiOrder, ApiQuote, ApiRfq, ApiShipment } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -109,8 +102,8 @@ export default async function AdminDashboard() {
     const responses = await Promise.all(
       supplierIds.map(async (supplierId) => {
         try {
-          const payload: SupplierReviewsPayload = await api.listSupplierReviews(supplierId);
-          return { id: supplierId, avg: payload.avg, count: payload.reviews.length };
+          const { reviews, avg } = await api.listSupplierReviews(supplierId);
+          return { id: supplierId, avg, count: reviews.length };
         } catch (error) {
           console.error("Failed to load supplier reviews for", supplierId, error);
           return null;

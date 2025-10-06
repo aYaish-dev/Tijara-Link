@@ -1,18 +1,36 @@
 import { Controller, Post, Body, Get, Param, Inject } from '@nestjs/common';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { ShipmentMode, ShipmentStatus } from '@prisma/client';
+
 import { PrismaService } from './prisma.service';
+
+class CreateShipmentDto {
+  @IsOptional()
+  @IsEnum(ShipmentMode, {
+    message: `mode must be one of ${Object.values(ShipmentMode).join(', ')}`,
+  })
+  mode?: ShipmentMode;
+
+  @IsOptional()
+  @IsString()
+  trackingNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  tracking?: string;
+}
 
 @Controller()
 export class ShipmentsController {
   constructor(@Inject(PrismaService) private prisma: PrismaService) {}
 
   @Post('orders/:orderId/shipments')
-  async create(@Param('orderId') orderId: string, @Body() dto: any) {
+  async create(@Param('orderId') orderId: string, @Body() dto: CreateShipmentDto) {
     try {
-      const mode = (dto?.mode || 'SEA').toString().toUpperCase(); // AIR | SEA | ROAD
-      const tracking =
-        dto?.trackingNumber?.toString() || dto?.tracking?.toString() || null; // الحقل في DB اسمه "tracking"
+      const mode = dto.mode || ShipmentMode.SEA;
+      const tracking = dto.trackingNumber?.trim() || dto.tracking?.trim() || null; // الحقل في DB اسمه "tracking"
       const created = await this.prisma.shipment.create({
-        data: { orderId, mode, tracking, status: 'BOOKED' },
+        data: { orderId, mode, tracking, status: ShipmentStatus.BOOKED },
       });
       return created;
     } catch (e: any) {

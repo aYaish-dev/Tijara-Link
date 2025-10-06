@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Body, Param, Inject } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from './prisma.service';
 import { IdParamDto } from './dto/id-param.dto';
 import { CreateOrderDto } from './dto/orders.dto';
@@ -8,6 +8,87 @@ import { CreateOrderDto } from './dto/orders.dto';
 @Controller('orders')
 export class OrdersController {
   constructor(@Inject(PrismaService) private prisma: PrismaService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'List orders with logistics and review details' })
+  @ApiOkResponse({ description: 'Orders enriched with escrow, shipments, contract, and review data' })
+  async list() {
+    const orders = await this.prisma.order.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        escrow: true,
+        shipments: {
+          include: { customs: true },
+          orderBy: { createdAt: 'desc' },
+        },
+        contract: true,
+        reviews: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    return orders.map((order) => {
+      const latestReview = order.reviews?.[0] ?? null;
+      return {
+        id: order.id,
+        status: order.status,
+        totalMinor: order.totalMinor,
+        totalCurrency: order.totalCurrency,
+        createdAt: order.createdAt?.toISOString?.() ?? order.createdAt,
+        buyerCompanyId: order.buyerCompanyId,
+        buyerId: order.buyerCompanyId,
+        supplierCompanyId: order.supplierCompanyId,
+        supplierId: order.supplierCompanyId,
+        escrow: order.escrow
+          ? {
+              id: order.escrow.id,
+              heldMinor: order.escrow.heldMinor,
+              currency: order.escrow.currency,
+              released: order.escrow.released,
+              createdAt: order.escrow.createdAt?.toISOString?.() ?? order.escrow.createdAt,
+            }
+          : null,
+        shipments: order.shipments.map((shipment) => ({
+          id: shipment.id,
+          orderId: shipment.orderId,
+          mode: shipment.mode,
+          tracking: shipment.tracking,
+          status: shipment.status,
+          createdAt: shipment.createdAt?.toISOString?.() ?? shipment.createdAt,
+          customs: shipment.customs.map((customs) => ({
+            id: customs.id,
+            shipmentId: customs.shipmentId,
+            status: customs.status,
+            data: customs.data,
+          })),
+        })),
+        contract: order.contract
+          ? {
+              id: order.contract.id,
+              hash: order.contract.hash,
+              buyerSignedAt:
+                order.contract.buyerSignedAt?.toISOString?.() ?? order.contract.buyerSignedAt,
+              supplierSignedAt:
+                order.contract.supplierSignedAt?.toISOString?.() ?? order.contract.supplierSignedAt,
+              createdAt: order.contract.createdAt?.toISOString?.() ?? order.contract.createdAt,
+            }
+          : null,
+        review: latestReview
+          ? {
+              id: latestReview.id,
+              rating: latestReview.rating,
+              comment: latestReview.text,
+              text: latestReview.text,
+              orderId: latestReview.orderId,
+              supplierCompanyId: latestReview.companyId,
+              createdAt: latestReview.createdAt?.toISOString?.() ?? latestReview.createdAt,
+            }
+          : null,
+      };
+    });
+  }
 
   // GET /orders/:id  → يرجع الطلب مع العلاقات
   @Get(':id')

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import {
   api,
+  ApiCustoms,
   ApiOrder,
   ApiShipment,
 } from "@/lib/api";
@@ -38,8 +39,13 @@ function formatDate(value?: string | null) {
 function shipmentStatusBadge(status?: string | null) {
   const normalized = String(status || "pending").toLowerCase();
   if (/(delivered|cleared)/.test(normalized)) return "status-pill status-pill--approved";
-  if (/(customs|hold)/.test(normalized)) return "status-pill status-pill--pending";
+  if (/(customs|hold|rail|road|sea|air)/.test(normalized)) return "status-pill status-pill--pending";
   return "status-pill status-pill--draft";
+}
+
+function firstCustoms(customs?: ApiCustoms[] | null): ApiCustoms | null {
+  if (!customs?.length) return null;
+  return customs[0] ?? null;
 }
 
 function ShipmentActions({ shipment }: { shipment: ApiShipment }) {
@@ -158,32 +164,34 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
 
         {order.shipments.length ? (
           <ul className="list-stack">
-            {order.shipments.map((shipment) => (
-              <li key={shipment.id} className="shipment-card">
-                <div className="shipment-card__header">
-                  <div>
-                    <p className="eyebrow">Shipment #{shipment.id}</p>
-                    <h3>{shipment.mode || "Mode not set"}</h3>
+            {order.shipments?.map((shipment) => {
+              const customs = firstCustoms(shipment.customs);
+              return (
+                <li key={shipment.id} className="shipment-card">
+                  <div className="shipment-card__header">
+                    <div>
+                      <p className="eyebrow">Shipment #{shipment.id}</p>
+                      <h3>{shipment.mode || "Mode not set"}</h3>
+                    </div>
+                    <span className={shipmentStatusBadge(shipment.status)}>{shipment.status || "Pending"}</span>
                   </div>
-                  <span className={shipmentStatusBadge(shipment.status)}>{shipment.status || "Pending"}</span>
-                </div>
-                <p className="section-subtitle">Tracking: {shipment.tracking || "—"}</p>
-                <ShipmentActions shipment={shipment} />
+                  <p className="section-subtitle">Tracking: {shipment.tracking || "—"}</p>
+                  <ShipmentActions shipment={shipment} />
 
-                <div className="divider" />
+                  <div className="divider" />
 
-                <div className="shipment-card__customs">
-                  <h4>Customs declaration</h4>
-                  {shipment.customs ? (
-                    <div className="customs-summary">
-                      <p>
-                        Status: <strong>{shipment.customs.status || "SUBMITTED"}</strong>
-                      </p>
-                      <p>HS Code: {shipment.customs.data?.hsCode || "—"}</p>
-                      <p>Docs: {(shipment.customs.data?.docs || []).join(", ") || "—"}</p>
+                  <div className="shipment-card__customs">
+                    <h4>Customs declaration</h4>
+                    {customs ? (
+                      <div className="customs-summary">
+                        <p>
+                        Status: <strong>{customs.status || "SUBMITTED"}</strong>
+                        </p>
+                      <p>HS Code: {customs.data?.hsCode || "—"}</p>
+                      <p>Docs: {(customs.data?.docs || []).join(", ") || "—"}</p>
                       <div className="stack-horizontal">
                         <SetCustomsStatusButton
-                          customsId={shipment.customs.id}
+                          customsId={customs.id}
                           status="CLEARED"
                           label="Mark customs cleared"
                         />
@@ -192,10 +200,11 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
                   ) : (
                     <p className="section-subtitle">No customs declaration linked yet.</p>
                   )}
-                  <AttachCustomsForm shipmentId={shipment.id} customs={shipment.customs} />
+                  <AttachCustomsForm shipmentId={shipment.id} customs={customs} />
                 </div>
               </li>
-            ))}
+            );
+          })}
           </ul>
         ) : (
           <div className="empty-state" style={{ marginTop: "1rem" }}>
