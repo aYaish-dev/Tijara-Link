@@ -1,10 +1,10 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { api, type ApiAuthClaims, type ApiAuthResponse, setAuthToken } from "../../lib/api";
 
-export type UserRole = "buyer" | "seller";
+export type UserRole = "buyer" | "seller" | "admin";
 
 type AuthSession = {
   token: string;
@@ -28,7 +28,7 @@ type RegisterPayload = {
   password: string;
   fullName: string;
   companyName: string;
-  role: UserRole;
+  role: Exclude<UserRole, "admin">;
   remember?: boolean;
 };
 
@@ -51,7 +51,14 @@ const SESSION_STORAGE_KEY = "tijara-link.session";
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 function mapApiRole(role: string): UserRole {
-  return role?.toUpperCase() === "SUPPLIER" ? "seller" : "buyer";
+  switch (role?.toUpperCase()) {
+    case "SUPPLIER":
+      return "seller";
+    case "ADMIN":
+      return "admin";
+    default:
+      return "buyer";
+  }
 }
 
 function claimsToSession(claims: ApiAuthClaims, token: string, expiresAt: string): AuthSession {
@@ -117,7 +124,7 @@ function authResponseToPersisted(response: ApiAuthResponse): PersistedSession {
   };
 }
 
-export default function AuthProvider({ children }: { children: React.ReactNode }) {
+export default function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [isHydrated, setHydrated] = useState(false);
 

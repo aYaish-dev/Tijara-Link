@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 
 import { useAuth, type UserRole } from "../providers/AuthProvider";
 
-const ROLE_OPTIONS: Array<{ value: UserRole; title: string; description: string; emoji: string }> = [
+type RegisterableRole = Exclude<UserRole, "admin">;
+
+const ROLE_OPTIONS: Array<{ value: RegisterableRole; title: string; description: string; emoji: string }> = [
   {
     value: "buyer",
     title: "Buyer",
@@ -21,12 +23,12 @@ const ROLE_OPTIONS: Array<{ value: UserRole; title: string; description: string;
   },
 ];
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { session, register, isHydrated } = useAuth();
 
-  const [role, setRole] = useState<UserRole>("buyer");
+  const [role, setRole] = useState<RegisterableRole>("buyer");
   const [fullName, setFullName] = useState("");
   const [company, setCompany] = useState("");
   const [email, setEmail] = useState("");
@@ -46,7 +48,12 @@ export default function RegisterPage() {
   useEffect(() => {
     if (!isHydrated) return;
     if (session) {
-      const destination = session.role === "seller" ? "/seller/dashboard" : "/buyer/dashboard";
+      const destination =
+        session.role === "seller"
+          ? "/seller/dashboard"
+          : session.role === "admin"
+            ? "/admin"
+            : "/buyer/dashboard";
       router.replace(destination);
     }
   }, [isHydrated, router, session]);
@@ -243,5 +250,22 @@ export default function RegisterPage() {
         </p>
       </section>
     </main>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="page auth-page">
+          <section className="card auth-card">
+            <h1 className="auth-card__title">Loading sign-up…</h1>
+            <p className="auth-card__subtitle">Preparing your onboarding checklist.</p>
+          </section>
+        </main>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   );
 }

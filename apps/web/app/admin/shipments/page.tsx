@@ -1,11 +1,13 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
-import { api, ApiCustoms, ApiOrder, ApiShipment } from "@/lib/api";
+import { useRequireRole } from "../../hooks/useRequireRole";
+import { api, type ApiCustoms, type ApiOrder, type ApiShipment } from "@/lib/api";
 import SetShipmentStatusButton from "@/app/components/SetShipmentStatusButton";
 import AttachCustomsForm from "@/app/components/AttachCustomsForm";
 import SetCustomsStatusButton from "@/app/components/SetCustomsStatusButton";
-
-export const dynamic = "force-dynamic";
 
 function shipmentStatusBadge(status?: string | null) {
   const normalized = String(status || "BOOKED").toLowerCase();
@@ -19,15 +21,59 @@ function normaliseCustoms(customs?: ApiCustoms[] | null): ApiCustoms | null {
   return customs[0] ?? null;
 }
 
-export default async function AdminShipmentsPage() {
-  let orders: ApiOrder[] = [];
-  let error: string | null = null;
+export default function AdminShipmentsPage() {
+  const { canRender, isHydrated } = useRequireRole("admin", { redirectTo: "/admin/shipments" });
+  const [orders, setOrders] = useState<ApiOrder[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setLoading] = useState(true);
 
-  try {
-    orders = await api.listOrders();
-  } catch (err) {
-    console.error("Failed to list orders for shipments", err);
-    error = (err as Error)?.message || "Unable to load shipments";
+  useEffect(() => {
+    if (!canRender) return;
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await api.listOrders();
+        if (!cancelled) {
+          setOrders(response);
+        }
+      } catch (err) {
+        console.error("Failed to list orders for shipments", err);
+        if (!cancelled) {
+          setOrders([]);
+          setError((err as Error)?.message || "Unable to load shipments");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canRender]);
+
+  if (!isHydrated || !canRender) {
+    return (
+      <main className="detail-page">
+        <header className="detail-header">
+          <div>
+            <p className="eyebrow">Logistics oversight</p>
+            <h1>Shipments</h1>
+          </div>
+        </header>
+        <section className="card">
+          <h2>Verifying access…</h2>
+          <p>Please wait while we confirm your permissions.</p>
+        </section>
+      </main>
+    );
   }
 
   const shipments: ApiShipment[] = orders.flatMap((order) => order.shipments);
@@ -55,7 +101,12 @@ export default async function AdminShipmentsPage() {
           <span className="badge-inline">{shipments.length} shipments</span>
         </div>
 
-        {shipments.length ? (
+        {isLoading ? (
+          <div className="empty-state">
+            <h3>Loading shipments…</h3>
+            <p>Checking manifests and latest tracking updates.</p>
+          </div>
+        ) : shipments.length ? (
           <ul className="list-stack">
             {shipments.map((shipment) => {
               const customs = normaliseCustoms(shipment.customs);
@@ -117,3 +168,4 @@ export default async function AdminShipmentsPage() {
     </main>
   );
 }
+

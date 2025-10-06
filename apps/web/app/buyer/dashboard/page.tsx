@@ -17,7 +17,8 @@ export default function BuyerDashboardPage() {
       return;
     }
     if (session.role !== "buyer") {
-      router.replace("/seller/dashboard");
+      const destination = session.role === "seller" ? "/seller/dashboard" : "/admin";
+      router.replace(destination);
     }
   }, [isHydrated, router, session]);
 
