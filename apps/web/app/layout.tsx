@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 
+import { cn } from "@/lib/utils";
+
 import "./globals.css";
 import AuthProvider from "./providers/AuthProvider";
 import SiteHeader from "./components/SiteHeader";

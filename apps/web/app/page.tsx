@@ -9,7 +9,6 @@ export default async function Home() {
   try {
     rfqs = await api.listRfq();
   } catch (err) {
-    // بنعرض الصفحة حتى لو الـ API وقع
     console.error("Failed to load RFQs", err);
     rfqs = [];
   }
@@ -21,6 +20,20 @@ export default async function Home() {
   const fulfilledRfqs = rfqs.filter((r) =>
     String(r.status || "").toLowerCase().match(/closed|awarded|completed|delivered/)
   ).length;
+
+  const stats = [
+    { label: "Open RFQs", value: activeRfqs.toString() },
+    { label: "Fulfilled", value: fulfilledRfqs.toString() },
+    { label: "Total Requests", value: totalRfqs.toString() },
+    {
+      label: "API Endpoint",
+      value: (
+        <Link href={`${API_BASE}/rfq`} target="_blank" rel="noreferrer" className="font-semibold text-accent">
+          /rfq
+        </Link>
+      ),
+    },
+  ];
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
@@ -170,7 +183,7 @@ export default async function Home() {
               </ul>
             </div>
           </div>
-        </div>
+        ))}
       </section>
 
       <section className="border-t border-slate-800 bg-slate-950/90 py-20">

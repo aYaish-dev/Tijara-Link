@@ -1,6 +1,9 @@
 import Link from "next/link";
 
-import { api, ApiReview, SupplierReviewsPayload } from "@/lib/api";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { api, type ApiReview, type SupplierReviewsPayload } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -15,12 +18,17 @@ function formatDate(value?: string) {
   }).format(date);
 }
 
+function averageRating(reviews: ApiReview[]) {
+  if (!reviews.length) return 0;
+  const total = reviews.reduce((acc, review) => acc + (Number(review.rating) || 0), 0);
+  return total / reviews.length;
+}
+
 export default async function SupplierReviewsPage({ params }: { params: { companyId: string } }) {
   const { companyId } = params;
 
   let payload: SupplierReviewsPayload | null = null;
   let reviews: ApiReview[] = [];
-  let average = 0;
   let error: string | null = null;
 
   try {
@@ -34,44 +42,63 @@ export default async function SupplierReviewsPage({ params }: { params: { compan
   const average = payload?.avg ?? averageRating(reviews);
 
   return (
-    <main className="detail-page">
-      <header className="detail-header">
-        <div>
-          <p className="eyebrow">Supplier performance</p>
-          <h1>Reviews for {companyId}</h1>
-          <p className="section-subtitle">
-            Average rating {reviews.length ? average.toFixed(2) : "–"} from {reviews.length} review
-            {reviews.length === 1 ? "" : "s"}.
-          </p>
+    <main className="relative mx-auto flex w-full max-w-5xl flex-col gap-10 px-6 pb-20 pt-16 lg:px-8 lg:pt-20">
+      <header className="flex flex-col justify-between gap-6 rounded-3xl border border-border/30 bg-card/80 px-8 py-10 shadow-lg backdrop-blur-xl sm:flex-row sm:items-end">
+        <div className="space-y-4">
+          <Badge className="w-fit">Supplier performance</Badge>
+          <div className="space-y-3">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Reviews for {companyId}</h1>
+            <p className="text-base text-muted-foreground">
+              Average rating {reviews.length ? average.toFixed(2) : "–"} from {reviews.length} review
+              {reviews.length === 1 ? "" : "s"}.
+            </p>
+          </div>
         </div>
-        <Link className="button-secondary" href="/">
-          ← Back to overview
-        </Link>
+        <Button asChild variant="outline">
+          <Link href="/">← Back to overview</Link>
+        </Button>
       </header>
 
-      {error && <div className="alert alert--error">{error}</div>}
+      {error && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-4 text-sm font-medium text-rose-600 shadow-sm">
+          {error}
+        </div>
+      )}
 
-      <section className="card">
-        {reviews.length ? (
-          <ul className="list-stack">
-            {reviews.map((review, index) => (
-              <li key={`${review.orderId}-${index}`} className="review-card">
-                <div className="review-card__header">
-                  <span className="review-card__rating">{review.rating.toFixed(1)}</span>
-                  <span className="review-card__meta">Order {review.orderId || "—"}</span>
-                  <span className="review-card__meta">{formatDate(review.createdAt)}</span>
-                </div>
-                <p className="review-card__comment">{review.comment || "No comment provided."}</p>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="empty-state">
-            <h3>No reviews yet</h3>
-            <p>Once buyers submit post-delivery feedback it will be displayed here.</p>
-          </div>
-        )}
-      </section>
+      <Card className="rounded-3xl border border-border/30 bg-card/85 shadow-lg backdrop-blur-xl">
+        <CardHeader className="space-y-3 pb-4">
+          <CardTitle className="text-2xl font-semibold">Recent feedback</CardTitle>
+          <CardDescription>
+            Once buyers submit post-delivery feedback it will be displayed here, including ratings and comments.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {reviews.length ? (
+            <ul className="space-y-4">
+              {reviews.map((review, index) => (
+                <li
+                  key={`${review.orderId}-${index}`}
+                  className="rounded-2xl border border-border/40 bg-white/80 px-5 py-4 shadow-md backdrop-blur"
+                >
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                    <span className="rounded-full bg-accent-subtle px-3 py-1 text-sm font-semibold text-accent">
+                      {review.rating.toFixed(1)}
+                    </span>
+                    <span className="font-medium text-foreground">Order {review.orderId || "—"}</span>
+                    <span>{formatDate(review.createdAt)}</span>
+                  </div>
+                  <p className="mt-3 text-base text-foreground">{review.comment || "No comment provided."}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border/40 bg-white/70 px-6 py-12 text-center text-muted-foreground">
+              <h3 className="text-lg font-semibold text-foreground">No reviews yet</h3>
+              <p className="mt-2 text-sm">Once buyers submit post-delivery feedback it will be displayed here.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </main>
   );
 }

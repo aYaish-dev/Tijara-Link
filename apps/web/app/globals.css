@@ -385,50 +385,28 @@ main.auth-page {
   gap: 18px;
 }
 
-.stat-card {
-  background: white;
-  padding: 20px;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  border: 1px solid rgba(226, 232, 240, 0.7);
-}
+@layer base {
+  :root {
+    color-scheme: light;
+    --font-sans: "Poppins", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
 
-.stat-card__label {
-  color: var(--muted-soft);
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
+    --background: 214 47% 97%;
+    --foreground: 222 47% 11%;
 
-.stat-card__value {
-  font-size: 1.875rem;
-  font-weight: 700;
-  margin-top: 8px;
-}
+    --muted: 215 16% 47%;
+    --muted-foreground: 215 20% 65%;
 
-.layout-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 28px;
-}
+    --accent: 221 83% 53%;
+    --accent-foreground: 0 0% 100%;
+    --accent-subtle: 214 95% 93%;
+    --accent-soft: 214 95% 93%;
 
-@media (min-width: 1000px) {
-  .layout-grid {
-    grid-template-columns: 2fr 1fr;
-  }
-}
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
 
-.table-wrapper {
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(203, 213, 225, 0.6);
-  overflow: hidden;
-  background: white;
-}
-
-.rfq-table {
-  width: 100%;
-  border-collapse: collapse;
-}
+    --border: 215 20% 65%;
+    --input: 215 20% 78%;
+    --ring: 221 83% 53%;
 
 .rfq-table thead {
   background: rgba(37, 99, 235, 0.06);
@@ -714,14 +692,14 @@ a.link-muted:hover {
   color: var(--muted);
 }
 
-@media (max-width: 640px) {
-  .card,
-  .card--compact {
-    padding: 24px;
+    --radius-lg: 24px;
+    --radius-md: 16px;
+    --radius-sm: 12px;
   }
 
-  .form__footer {
-    align-items: flex-start;
+  body {
+    @apply min-h-screen bg-body-gradient text-foreground antialiased;
+    font-family: var(--font-sans);
   }
 }
 
