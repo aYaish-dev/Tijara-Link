@@ -222,6 +222,7 @@ model Contract {
   hash      String
   buyerSignedAt    DateTime?
   supplierSignedAt DateTime?
+
 }
 
 model Review {

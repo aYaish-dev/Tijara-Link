@@ -72,7 +72,7 @@ export class OrdersController {
                 order.contract.buyerSignedAt?.toISOString?.() ?? order.contract.buyerSignedAt,
               supplierSignedAt:
                 order.contract.supplierSignedAt?.toISOString?.() ?? order.contract.supplierSignedAt,
-              createdAt: order.contract.createdAt?.toISOString?.() ?? order.contract.createdAt,
+              
             }
           : null,
         review: latestReview
@@ -83,7 +83,7 @@ export class OrdersController {
               text: latestReview.text,
               orderId: latestReview.orderId,
               supplierCompanyId: latestReview.companyId,
-              createdAt: latestReview.createdAt?.toISOString?.() ?? latestReview.createdAt,
+              
             }
           : null,
       };
