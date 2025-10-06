@@ -16,6 +16,7 @@ type AuthUser = {
   role: PrismaRole;
   companyId: string;
   fullName: string;
+  /** If your schema uses `passwordHash` rename this field + update below */
   password: string;
 };
 
@@ -45,6 +46,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
+  /** Map UI roles to Prisma enum values */
   private mapRole(role: 'buyer' | 'seller'): PrismaRole {
     return role === 'seller' ? 'SUPPLIER' : 'BUYER';
   }
@@ -53,21 +55,24 @@ export class AuthService {
     return email.trim().toLowerCase();
   }
 
-  private async validateCredentials(email: string, password: string): Promise<AuthUser> {
+  private async validateCredentials(
+    email: string,
+    password: string,
+  ): Promise<AuthUser> {
     const normalizedEmail = this.normalizeEmail(email);
-    const user = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
 
-    const userRecord = user as AuthUser;
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+    if (!user) throw new UnauthorizedException('Invalid credentials');
 
-    const valid = await verify(userRecord.password, password);
-    if (!valid) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
+    const u = user as unknown as AuthUser;
 
-    return userRecord;
+    // If your schema uses `passwordHash`, change to `u.passwordHash`
+    const ok = await verify(u.password, password);
+    if (!ok) throw new UnauthorizedException('Invalid credentials');
+
+    return u;
   }
 
   private async buildAuthResponse(user: AuthUser) {
@@ -93,7 +98,6 @@ export class AuthService {
 
   async login(email: string, password: string) {
     const user = await this.validateCredentials(email, password);
-
     return this.buildAuthResponse(user);
   }
 
@@ -106,9 +110,11 @@ export class AuthService {
     }
 
     const role = this.mapRole(payload.role);
-    const hashedPassword = await hash(payload.password);
+    const passwordHash = await hash(payload.password);
 
-    const { user } = await this.prisma.$transaction(async (tx: PrismaService) => {
+    // IMPORTANT: don't annotate `tx` as PrismaService; let TS infer the Prisma client type
+    const { user } = await this.prisma.$transaction(async (tx) => {
+      // (Optional) check for existing company by normalized name if you need dedup
       const company = await tx.company.create({
         data: {
           legalName: payload.companyName.trim(),
@@ -116,20 +122,20 @@ export class AuthService {
         },
       });
 
-      const createdUser = await tx.user.create({
+      const created = await tx.user.create({
         data: {
           email,
           fullName: payload.fullName.trim(),
-          role,
-          password: hashedPassword,
+          role, // 'BUYER' | 'SUPPLIER'
+          // If your schema uses `passwordHash`, set { passwordHash: passwordHash }
+          password: passwordHash,
           companyId: company.id,
         },
       });
 
-      return { user: createdUser as AuthUser };
+      return { user: created as unknown as AuthUser };
     });
 
     return this.buildAuthResponse(user);
   }
 }
-

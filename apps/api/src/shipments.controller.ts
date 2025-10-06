@@ -1,21 +1,7 @@
 import { Controller, Post, Body, Get, Param, Inject } from '@nestjs/common';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { PrismaService } from './prisma.service';
-
-enum ShipmentMode {
-  AIR = 'AIR',
-  SEA = 'SEA',
-  ROAD = 'ROAD',
-  RAIL = 'RAIL',
-}
-
-enum ShipmentStatus {
-  BOOKED = 'BOOKED',
-  IN_TRANSIT = 'IN_TRANSIT',
-  CUSTOMS = 'CUSTOMS',
-  DELIVERED = 'DELIVERED',
-  CANCELLED = 'CANCELLED',
-}
+import { ShipmentMode, ShipmentStatus } from '@prisma/client';
 
 class CreateShipmentDto {
   @IsOptional()
