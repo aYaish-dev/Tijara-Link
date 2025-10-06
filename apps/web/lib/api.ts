@@ -54,28 +54,34 @@ export type ApiQuote = {
 };
 
 export type ApiEscrow = {
+  id: string;
   released: boolean;
   heldMinor: number;
   currency: string;
+  createdAt?: string;
+};
+
+export type ApiCustomsData = {
+  hsCode?: string;
+  docs?: string[];
+  [key: string]: unknown;
 };
 
 export type ApiCustoms = {
   id: string;
+  shipmentId?: string;
   status?: string | null;
-  data?: {
-    hsCode?: string;
-    docs?: string[];
-  } | null;
-  submittedAt?: string | null;
-  clearedAt?: string | null;
+  data?: ApiCustomsData | null;
 };
 
 export type ApiShipment = {
   id: string;
+  orderId?: string | null;
   mode?: string | null;
   tracking?: string | null;
   status?: string | null;
-  customs?: ApiCustoms | null;
+  createdAt?: string;
+  customs?: ApiCustoms[] | null;
 };
 
 export type ApiContract = {
@@ -91,6 +97,7 @@ export type ApiReview = {
   id?: string;
   rating: number;
   comment?: string | null;
+  text?: string | null;
   orderId?: string;
   supplierCompanyId?: string;
   createdAt?: string;
@@ -108,11 +115,18 @@ export type ApiOrder = {
   totalCurrency?: string | null;
   createdAt?: string;
   buyerId?: string | null;
+  buyerCompanyId?: string | null;
   supplierId?: string | null;
+  supplierCompanyId?: string | null;
   escrow?: ApiEscrow | null;
   shipments?: ApiShipment[];
   contract?: ApiContract | null;
   review?: ApiReview | null;
+};
+
+export type SupplierReviewsPayload = {
+  reviews: ApiReview[];
+  avg: number;
 };
 
 async function request<T>(input: RequestInfo, init?: RequestInit) {
@@ -146,6 +160,10 @@ export const api = {
     return request<ApiQuote[]>(`${API_BASE}/quotes/rfq/${rfqId}`, {
       cache: "no-store",
     });
+  },
+
+  async listOrders(): Promise<ApiOrder[]> {
+    return request<ApiOrder[]>(`${API_BASE}/orders`, { cache: "no-store" });
   },
 
   async acceptQuote(quoteId: string) {
@@ -241,7 +259,7 @@ export const api = {
     });
   },
 
-  async listSupplierReviews(companyId: string) {
+  async listSupplierReviews(companyId: string): Promise<SupplierReviewsPayload> {
     return request<SupplierReviewsPayload>(`${API_BASE}/suppliers/${companyId}/reviews`, {
       cache: "no-store",
     });
